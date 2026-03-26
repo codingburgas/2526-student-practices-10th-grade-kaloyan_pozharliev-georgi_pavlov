@@ -1,6 +1,7 @@
 #include "app.h"
 #include <raylib.h>
 #include "PL/authScreen.h"
+#include "PL/registerScreen.h"
 
 App::App(Vector2 setScreen, std::string setName)
 {
@@ -29,6 +30,8 @@ void App::Run()
         case AUTH:
             appState = authScreen(mainFont, sessionUser);
             break;
+        case REG:
+            appState = registerScreen(mainFont, sessionUser);
         }
     }
 }

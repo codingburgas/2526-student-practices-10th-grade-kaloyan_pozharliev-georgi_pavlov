@@ -181,19 +181,23 @@ AppState authScreen(Font font, SessionUser& sessionUser)
     DrawRectangleRounded(rememberBox, 0.2f, 4, BG_INPUT);
     DrawRectangleRoundedLines(rememberBox, 0.2f, 4, BORDER_NORMAL);
     if (rememberMe)
-    DrawRectangleRounded({ rememberBox.x + 3, rememberBox.y + 3, 12, 12 }, 0.3f, 4, ACCENT);
+        DrawRectangleRounded({ rememberBox.x + 3, rememberBox.y + 3, 12, 12 }, 0.3f, 4, ACCENT);
     DrawTextEx(font, "REMEMBER ME", { rememberBox.x + 26, rememberBox.y + 2 }, 11, 1, TEXT_SECONDARY);
 
     DrawTextEx(font, "FORGOT PASSWORD?", { forgotLink.x, forgotLink.y }, 11, 1, hoverForgot ? TEXT_PRIMARY : ACCENT);
 
     if (hoverSignIn)
-    DrawRectangleRounded({ signInBtn.x - 4, signInBtn.y - 4, signInBtn.width + 8, signInBtn.height + 8 }, 0.35f, 8, Color{ 72, 130, 255, 28 });
+        DrawRectangleRounded({ signInBtn.x - 4, signInBtn.y - 4, signInBtn.width + 8, signInBtn.height + 8 }, 0.35f, 8, Color{ 72, 130, 255, 28 });
     DrawRectangleRounded(signInBtn, 0.35f, 8, hoverSignIn ? ACCENT_HOVER : ACCENT);
     Vector2 signInTextSize = MeasureTextEx(font, "SIGN IN", 15, 1);
     DrawTextEx(font, "SIGN IN", { signInBtn.x + signInBtn.width / 2 - signInTextSize.x / 2, signInBtn.y + signInBtn.height / 2 - signInTextSize.y / 2 }, 15, 1, WHITE);
 
     DrawTextEx(font, signUpPreText, { signUpStartX, (float)signUpLinkY }, 13, 0.5f, TEXT_SECONDARY);
     DrawTextEx(font, signUpLinkText, { signUpStartX + preTextSize.x + 6, (float)signUpLinkY }, 13, 0.5f, hoverSignUp ? TEXT_PRIMARY : ACCENT);
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(mouse, signUpLink))
+    {
+        return REG;
+    }
 
     EndDrawing();
 
