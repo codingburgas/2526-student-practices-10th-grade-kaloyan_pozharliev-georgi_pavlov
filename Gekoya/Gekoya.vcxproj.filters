@@ -27,6 +27,15 @@
     <ClCompile Include="src\PL\registerScreen.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\DAL\Database.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DAL\userRepository.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\BLL\authService.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\colors.h">
@@ -43,6 +52,15 @@
     </ClInclude>
     <ClInclude Include="src\PL\registerScreen.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\DAL\Database.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\DAL\userRepository.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\BLL\authService.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

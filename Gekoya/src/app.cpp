@@ -2,6 +2,7 @@
 #include <raylib.h>
 #include "PL/authScreen.h"
 #include "PL/registerScreen.h"
+#include "DAL/Database.h"
 
 App::App(Vector2 setScreen, std::string setName)
 {
@@ -13,6 +14,7 @@ App::App(Vector2 setScreen, std::string setName)
     SetTargetFPS(60);
 
     mainFont = LoadFontEx("fonts/AldotheApache.ttf", 32, 0, 250);
+    Database::Get();
 }
 
 App::~App()

@@ -1,28 +1,32 @@
 #include "authScreen.h"
 #include "../colors.h"
+#include "../BLL/AuthService.h"
 #include <string>
 #include <cmath>
 
-static std::string email = "";
+static std::string username = "";
 static std::string password = "";
 
-static bool emailActive = false;
+static bool usernameActive = false;
 static bool passwordActive = false;
 static bool showPassword = false;
 static bool rememberMe = false;
+
+static bool showError = false;
+static std::string errorMsg = "";
 
 static void HandleInput()
 {
     if (IsKeyPressed(KEY_BACKSPACE))
     {
-        if (emailActive && !email.empty())    email.pop_back();
+        if (usernameActive && !username.empty()) username.pop_back();
         if (passwordActive && !password.empty()) password.pop_back();
     }
 
     int key = GetCharPressed();
     while (key > 0)
     {
-        if (emailActive && email.length() < 48) email += (char)key;
+        if (usernameActive && username.length() < 48) username += (char)key;
         if (passwordActive && password.length() < 48) password += (char)key;
         key = GetCharPressed();
     }
@@ -51,15 +55,15 @@ AppState authScreen(Font font, SessionUser& sessionUser)
     int fieldH = 48;
     int fieldX = panelX + 32;
 
-    int emailLabelY = panelY + 172;
-    int emailFieldY = emailLabelY + 18;
-    int passLabelY = emailFieldY + fieldH + 20;
+    int userLabelY = panelY + 172;
+    int userFieldY = userLabelY + 18;
+    int passLabelY = userFieldY + fieldH + 20;
     int passFieldY = passLabelY + 18;
     int rememberY = passFieldY + fieldH + 18;
     int signInBtnY = rememberY + 42;
     int signUpLinkY = signInBtnY + fieldH + 22;
 
-    Rectangle emailField = { (float)fieldX, (float)emailFieldY, (float)fieldW, (float)fieldH };
+    Rectangle usernameField = { (float)fieldX, (float)userFieldY, (float)fieldW, (float)fieldH };
     Rectangle passField = { (float)fieldX, (float)passFieldY, (float)fieldW, (float)fieldH };
     Rectangle rememberBox = { (float)fieldX, (float)rememberY, 18, 18 };
     Rectangle signInBtn = { (float)fieldX, (float)signInBtnY, (float)fieldW, (float)fieldH };
@@ -67,13 +71,13 @@ AppState authScreen(Font font, SessionUser& sessionUser)
     Rectangle forgotLink = { (float)(fieldX + fieldW - 120), (float)rememberY, 120, 18 };
 
     Vector2 mouse = GetMousePosition();
-    bool    clicked = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    bool clicked = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 
     if (clicked)
     {
-        emailActive = CheckCollisionPointRec(mouse, emailField);
+        usernameActive = CheckCollisionPointRec(mouse, usernameField);
         passwordActive = CheckCollisionPointRec(mouse, passField);
-        if (CheckCollisionPointRec(mouse, eyeBtn))      showPassword = !showPassword;
+        if (CheckCollisionPointRec(mouse, eyeBtn)) showPassword = !showPassword;
         if (CheckCollisionPointRec(mouse, rememberBox)) rememberMe = !rememberMe;
     }
 
@@ -104,28 +108,24 @@ AppState authScreen(Font font, SessionUser& sessionUser)
         unsigned char a = (unsigned char)(t * t * (18.0f + pulse * 8.0f));
         DrawCircle((int)(screenW * 0.12f), (int)(screenH * 0.18f), (float)r, Color{ 40, 90, 255, a });
     }
-
     for (int r = 260; r >= 0; r -= 14)
     {
         float t = 1.0f - (float)r / 260.0f;
         unsigned char a = (unsigned char)(t * t * (16.0f + pulse * 6.0f));
         DrawCircle((int)(screenW * 0.88f), (int)(screenH * 0.82f), (float)r, Color{ 50, 80, 220, a });
     }
-
     for (int r = 200; r >= 0; r -= 14)
     {
         float t = 1.0f - (float)r / 200.0f;
         unsigned char a = (unsigned char)(t * t * (10.0f + pulse * 4.0f));
         DrawCircle((int)(screenW * 0.85f), (int)(screenH * 0.15f), (float)r, Color{ 80, 50, 200, a });
     }
-
     for (int r = 180; r >= 0; r -= 14)
     {
         float t = 1.0f - (float)r / 180.0f;
         unsigned char a = (unsigned char)(t * t * (8.0f + pulse * 4.0f));
         DrawCircle((int)(screenW * 0.14f), (int)(screenH * 0.80f), (float)r, Color{ 30, 70, 200, a });
     }
-
     for (int r = 340; r >= 0; r -= 14)
     {
         float t = 1.0f - (float)r / 340.0f;
@@ -146,17 +146,25 @@ AppState authScreen(Font font, SessionUser& sessionUser)
     Vector2 subheadingSize = MeasureTextEx(font, "Sign in to your Gekoya account", 13, 0.5f);
     DrawTextEx(font, "Sign in to your Gekoya account", { (float)(screenW / 2) - subheadingSize.x / 2, (float)(panelY + 130) }, 13, 0.5f, TEXT_SECONDARY);
 
-    DrawTextEx(font, "EMAIL ADDRESS", { (float)fieldX, (float)emailLabelY }, 11, 1, TEXT_SECONDARY);
-    DrawRectangleRounded(emailField, 0.18f, 8, BG_INPUT);
-    DrawRectangleRoundedLines(emailField, 0.18f, 8, emailActive ? BORDER_FOCUS : BORDER_NORMAL);
-    if (email.empty() && !emailActive)
-        DrawTextEx(font, "ENTER EMAIL", { (float)(fieldX + 14), (float)(emailFieldY + 16) }, 13, 1, TEXT_MUTED);
-    else
-        DrawTextEx(font, email.c_str(), { (float)(fieldX + 14), (float)(emailFieldY + 16) }, 13, 1, TEXT_PRIMARY);
-    if (emailActive && ((int)(GetTime() * 2)) % 2 == 0)
+    if (showError)
     {
-        float cursorX = fieldX + 14 + MeasureTextEx(font, email.c_str(), 13, 1).x + 2;
-        DrawRectangle((int)cursorX, emailFieldY + 12, 2, 22, BORDER_FOCUS);
+        Rectangle errBox = { (float)fieldX, (float)(panelY + 155), (float)fieldW, 34 };
+        DrawRectangleRec(errBox, Color{ 40, 20, 20, 255 });
+        DrawRectangleLinesEx(errBox, 1, Color{ 200, 70, 70, 255 });
+        DrawTextEx(font, errorMsg.c_str(), { errBox.x + 12, errBox.y + 10 }, 11, 1, Color{ 200, 70, 70, 255 });
+    }
+
+    DrawTextEx(font, "USERNAME", { (float)fieldX, (float)userLabelY }, 11, 1, TEXT_SECONDARY);
+    DrawRectangleRounded(usernameField, 0.18f, 8, BG_INPUT);
+    DrawRectangleRoundedLines(usernameField, 0.18f, 8, usernameActive ? BORDER_FOCUS : BORDER_NORMAL);
+    if (username.empty() && !usernameActive)
+        DrawTextEx(font, "ENTER USERNAME", { (float)(fieldX + 14), (float)(userFieldY + 16) }, 13, 1, TEXT_MUTED);
+    else
+        DrawTextEx(font, username.c_str(), { (float)(fieldX + 14), (float)(userFieldY + 16) }, 13, 1, TEXT_PRIMARY);
+    if (usernameActive && ((int)(GetTime() * 2)) % 2 == 0)
+    {
+        float cursorX = fieldX + 14 + MeasureTextEx(font, username.c_str(), 13, 1).x + 2;
+        DrawRectangle((int)cursorX, userFieldY + 12, 2, 22, BORDER_FOCUS);
     }
 
     DrawTextEx(font, "PASSWORD", { (float)fieldX, (float)passLabelY }, 11, 1, TEXT_SECONDARY);
@@ -194,12 +202,37 @@ AppState authScreen(Font font, SessionUser& sessionUser)
 
     DrawTextEx(font, signUpPreText, { signUpStartX, (float)signUpLinkY }, 13, 0.5f, TEXT_SECONDARY);
     DrawTextEx(font, signUpLinkText, { signUpStartX + preTextSize.x + 6, (float)signUpLinkY }, 13, 0.5f, hoverSignUp ? TEXT_PRIMARY : ACCENT);
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(mouse, signUpLink))
-    {
-        return REG;
-    }
 
     EndDrawing();
+
+    if (clicked && CheckCollisionPointRec(mouse, signUpLink))
+        return REG;
+
+    if (clicked && CheckCollisionPointRec(mouse, signInBtn))
+    {
+        if (username.empty() || password.empty())
+        {
+            showError = true;
+            errorMsg = "ERROR: ALL FIELDS REQUIRED";
+        }
+        else
+        {
+            bool success = AuthService::Login(username, password);
+            if (success)
+            {
+                showError = false;
+                sessionUser.username = username;
+                username = "";
+                password = "";
+                return AUTH;
+            }
+            else
+            {
+                showError = true;
+                errorMsg = "ERROR: INVALID CREDENTIALS";
+            }
+        }
+    }
 
     return AUTH;
 }

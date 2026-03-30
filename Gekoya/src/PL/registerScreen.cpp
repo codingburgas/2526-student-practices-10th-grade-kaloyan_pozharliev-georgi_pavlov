@@ -1,5 +1,6 @@
 #include "registerScreen.h"
 #include "../colors.h"
+#include "../BLL/AuthService.h"
 #include <string>
 #include <cmath>
 
@@ -267,13 +268,23 @@ AppState registerScreen(Font font, SessionUser& sessionUser)
         }
         else
         {
-            showError = false;
-            sessionUser.username = regUsername;
-            sessionUser.email = regEmail;
-            regUsername = "";
-            regEmail = "";
-            regPassword = "";
-            regConfirm = "";
+            bool success = AuthService::Register(regUsername, regPassword, 1);
+            if (!success)
+            {
+                showError = true;
+                errorMsg = "ERROR: USERNAME ALREADY EXISTS";
+            }
+            else
+            {
+                showError = false;
+                sessionUser.username = regUsername;
+                sessionUser.email = regEmail;
+                regUsername = "";
+                regEmail = "";
+                regPassword = "";
+                regConfirm = "";
+                return AUTH;
+            }
         }
     }
 

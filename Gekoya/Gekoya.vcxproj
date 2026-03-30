@@ -105,14 +105,25 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\vcpkg\installed\x64-windows\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\vcpkg\installed\x64-windows\include\mongocxx\v_noabi;C:\vcpkg\installed\x64-windows\include\bsoncxx\v_noabi;C:\vcpkg\installed\x64-windows\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\vcpkg\installed\x64-windows\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>raylib.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\vcpkg\installed\x64-windows\debug\lib;C:\vcpkg\installed\x64-windows\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mongocxx-v_noabi-dhi-mdd.lib;bsoncxx-v_noabi-dhi-mdd.lib;mongoc-1.0.lib;bson-1.0.lib;raylib.lib</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy C:\vcpkg\installed\x64-windows\bin\mongocxx-v_noabi-rhi-md.dll "$(OutDir)"
+
+copy C:\vcpkg\installed\x64-windows\bin\bsoncxx-v_noabi-rhi-md.dll "$(OutDir)"
+
+copy C:\vcpkg\installed\x64-windows\bin\mongoc-1.0.dll "$(OutDir)"
+
+copy C:\vcpkg\installed\x64-windows\bin\bson-1.0.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\raylib.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\*.dll "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -122,21 +133,41 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\vcpkg\installed\x64-windows\include\mongocxx\v_noabi;C:\vcpkg\installed\x64-windows\include\bsoncxx\v_noabi;C:\vcpkg\installed\x64-windows\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\vcpkg\installed\x64-windows\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mongocxx-v_noabi-rhi-md.lib;bsoncxx-v_noabi-rhi-md.lib;mongoc-1.0.lib;bson-1.0.lib;raylib.lib</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy C:\vcpkg\installed\x64-windows\bin\mongocxx-v_noabi-rhi-md.dll "$(OutDir)"
+
+copy C:\vcpkg\installed\x64-windows\bin\bsoncxx-v_noabi-rhi-md.dll "$(OutDir)"
+
+copy C:\vcpkg\installed\x64-windows\bin\mongoc-1.0.dll "$(OutDir)"
+
+copy C:\vcpkg\installed\x64-windows\bin\bson-1.0.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\raylib.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\*.dll "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\app.cpp" />
+    <ClCompile Include="src\BLL\authService.cpp" />
+    <ClCompile Include="src\DAL\Database.cpp" />
+    <ClCompile Include="src\DAL\userRepository.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\PL\authScreen.cpp" />
     <ClCompile Include="src\PL\registerScreen.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\app.h" />
+    <ClInclude Include="src\BLL\authService.h" />
     <ClInclude Include="src\colors.h" />
+    <ClInclude Include="src\DAL\Database.h" />
+    <ClInclude Include="src\DAL\userRepository.h" />
     <ClInclude Include="src\PL\authScreen.h" />
     <ClInclude Include="src\PL\registerScreen.h" />
     <ClInclude Include="src\utils.h" />
