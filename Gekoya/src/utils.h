@@ -7,6 +7,7 @@ enum AppState
     NIL = 0,
     AUTH,
     REG,
+    MAIN,
 };
 
 struct SessionUser

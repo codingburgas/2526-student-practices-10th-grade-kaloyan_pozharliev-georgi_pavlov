@@ -160,6 +160,7 @@ copy C:\vcpkg\installed\x64-windows\bin\*.dll "$(OutDir)"</Command>
     <ClCompile Include="src\DAL\userRepository.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\PL\authScreen.cpp" />
+    <ClCompile Include="src\PL\mainScreen.cpp" />
     <ClCompile Include="src\PL\registerScreen.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -169,6 +170,7 @@ copy C:\vcpkg\installed\x64-windows\bin\*.dll "$(OutDir)"</Command>
     <ClInclude Include="src\DAL\Database.h" />
     <ClInclude Include="src\DAL\userRepository.h" />
     <ClInclude Include="src\PL\authScreen.h" />
+    <ClInclude Include="src\PL\mainScreen.h" />
     <ClInclude Include="src\PL\registerScreen.h" />
     <ClInclude Include="src\utils.h" />
   </ItemGroup>

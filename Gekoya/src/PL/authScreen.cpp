@@ -224,7 +224,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
                 sessionUser.username = username;
                 username = "";
                 password = "";
-                return AUTH;
+                return MAIN;
             }
             else
             {

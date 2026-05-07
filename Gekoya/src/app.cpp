@@ -2,6 +2,7 @@
 #include <raylib.h>
 #include "PL/authScreen.h"
 #include "PL/registerScreen.h"
+#include "PL/mainScreen.h"
 #include "DAL/Database.h"
 
 App::App(Vector2 setScreen, std::string setName)
@@ -34,6 +35,10 @@ void App::Run()
             break;
         case REG:
             appState = registerScreen(mainFont, sessionUser);
+            break;
+        case MAIN:
+            appState = mainScreen(mainFont, sessionUser);
+            break;
         }
     }
 }
