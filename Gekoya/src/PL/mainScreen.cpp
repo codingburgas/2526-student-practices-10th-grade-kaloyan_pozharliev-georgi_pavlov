@@ -98,9 +98,6 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
         DrawCircle((int)(screenW * 0.5f), (int)(screenH * 0.5f), (float)r, Color{ 55, 95, 210, a });
     }
 
-    // =========================================================
-    // NAV BAR
-    // =========================================================
     DrawRectangle(0, 0, screenW, navH, Color{ 10, 12, 28, 220 });
     DrawRectangle(0, navH - 1, screenW, 1, BORDER_NORMAL);
 
@@ -163,25 +160,20 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
         bool  hovered = (hoveredCard == i);
         bool  selected = (selectedCard == i);
 
-        // Card shadow
         DrawRectangleRounded({ cx + 4, cy + 6, (float)cardW, (float)cardH }, 0.08f, 8, Color{ 0, 0, 0, 60 });
 
-        // Card body
         DrawRectangleRounded({ cx, cy, (float)cardW, (float)cardH }, 0.08f, 8, BG_CARD);
         DrawRectangleRoundedLines({ cx, cy, (float)cardW, (float)cardH }, 0.08f, 8,
             selected ? movies[i].accent : (hovered ? BORDER_FOCUS : BORDER_NORMAL));
 
-        // Accent color bar at top
         DrawRectangleRounded({ cx, cy, (float)cardW, 5 }, 0.5f, 4, movies[i].accent);
 
-        // Fake poster area
         Color posterBg = { (unsigned char)(movies[i].accent.r / 4),
                            (unsigned char)(movies[i].accent.g / 4),
                            (unsigned char)(movies[i].accent.b / 4), 255 };
         DrawRectangle((int)cx + 12, (int)cy + 18, cardW - 24, 120, posterBg);
         DrawRectangleLines((int)cx + 12, (int)cy + 18, cardW - 24, 120, movies[i].accent);
 
-        // Movie icon placeholder
         float iconX = cx + cardW / 2 - 16;
         float iconY = cy + 18 + 40;
         DrawRectangle((int)iconX, (int)iconY, 32, 28, movies[i].accent);
@@ -191,7 +183,6 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
             { iconX + 26, iconY + 14 },
             posterBg);
 
-        // Genre badge
         Vector2 genreSize = MeasureTextEx(font, movies[i].genre, 10, 1);
         float badgeX = cx + 12;
         float badgeY = cy + 148;
@@ -199,15 +190,12 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
             Color{ movies[i].accent.r, movies[i].accent.g, movies[i].accent.b, 40 });
         DrawTextEx(font, movies[i].genre, { badgeX + 6, badgeY + 4 }, 10, 1, movies[i].accent);
 
-        // Title
         DrawTextEx(font, movies[i].title, { cx + 12, cy + 175 }, 11, 1, TEXT_PRIMARY);
 
-        // Rating & duration
-        std::string ratingStr = std::string("★ ") + movies[i].rating;
+        std::string ratingStr = std::string("* ") + movies[i].rating;
         DrawTextEx(font, ratingStr.c_str(), { cx + 12, cy + 196 }, 11, 1, Color{ 255, 200, 50, 255 });
         DrawTextEx(font, movies[i].duration, { cx + 12, cy + 212 }, 10, 1, TEXT_SECONDARY);
 
-        // Book button
         Rectangle bookBtn = { cx + 12, cy + (float)cardH - 36, (float)cardW - 24, 26 };
         bool hoverBook = CheckCollisionPointRec(mouse, bookBtn);
         DrawRectangleRounded(bookBtn, 0.35f, 6,
@@ -225,7 +213,6 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
     DrawTextEx(font, "3 CINEMAS NEARBY", { 32, (float)(barY + 11) }, 11, 1, TEXT_SECONDARY);
     DrawTextEx(font, "12 SHOWS TODAY", { 200, (float)(barY + 11) }, 11, 1, TEXT_SECONDARY);
 
-    // Live dot
     float dotPulse = (sinf(time * 3.0f) + 1.0f) / 2.0f;
     unsigned char dotA = (unsigned char)(180 + dotPulse * 75);
     DrawCircle((int)(screenW - 120), barY + 18, 5, Color{ 80, 220, 120, dotA });
