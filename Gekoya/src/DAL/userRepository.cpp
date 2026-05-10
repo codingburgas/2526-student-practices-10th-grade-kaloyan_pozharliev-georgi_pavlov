@@ -10,11 +10,11 @@ bool UserRepository::InsertUser(const std::string& username, const std::string& 
     try
     {
         printf("InsertUser called: %s / %s / %d\n", username.c_str(), password.c_str(), accessLevel);
-        auto db = Database::Get().GetDB();
+        auto& db = Database::Get().GetDB();
         auto collection = db["users"];
         bsoncxx::builder::basic::document doc{};
-        doc.append(bsoncxx::builder::basic::kvp("username", username.data()));
-        doc.append(bsoncxx::builder::basic::kvp("password", password.data()));
+        doc.append(bsoncxx::builder::basic::kvp("username", username));
+        doc.append(bsoncxx::builder::basic::kvp("password", password));
         doc.append(bsoncxx::builder::basic::kvp("accessLevel", accessLevel));
         auto result = collection.insert_one(doc.view());
         return result ? true : false;
@@ -30,10 +30,10 @@ bool UserRepository::UserExists(const std::string& username)
 {
     try
     {
-        auto db = Database::Get().GetDB();
+        auto& db = Database::Get().GetDB();
         auto collection = db["users"];
         bsoncxx::builder::basic::document filter{};
-        filter.append(bsoncxx::builder::basic::kvp("username", username.data()));
+        filter.append(bsoncxx::builder::basic::kvp("username", username));
         auto result = collection.find_one(filter.view());
         return result ? true : false;
     }
@@ -48,11 +48,11 @@ bool UserRepository::ValidateUser(const std::string& username, const std::string
 {
     try
     {
-        auto db = Database::Get().GetDB();
+        auto& db = Database::Get().GetDB();
         auto collection = db["users"];
         bsoncxx::builder::basic::document filter{};
-        filter.append(bsoncxx::builder::basic::kvp("username", username.data()));
-        filter.append(bsoncxx::builder::basic::kvp("password", password.data()));
+        filter.append(bsoncxx::builder::basic::kvp("username", username));
+        filter.append(bsoncxx::builder::basic::kvp("password", password));
         printf("ValidateUser searching: %s / %s\n", username.c_str(), password.c_str());
         auto result = collection.find_one(filter.view());
         printf("ValidateUser result: %s\n", result ? "FOUND" : "NOT FOUND");
@@ -69,10 +69,10 @@ int UserRepository::GetUserAccessLevel(const std::string& username)
 {
     try
     {
-        auto db = Database::Get().GetDB();
+        auto& db = Database::Get().GetDB();
         auto collection = db["users"];
         bsoncxx::builder::basic::document filter{};
-        filter.append(bsoncxx::builder::basic::kvp("username", username.data()));
+        filter.append(bsoncxx::builder::basic::kvp("username", username));
         auto result = collection.find_one(filter.view());
         if (result)
             return result->view()["accessLevel"].get_int32().value;

@@ -110,19 +110,20 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\vcpkg\installed\x64-windows\debug\lib;C:\vcpkg\installed\x64-windows\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>mongocxx-v_noabi-dhi-mdd.lib;bsoncxx-v_noabi-dhi-mdd.lib;mongoc-1.0.lib;bson-1.0.lib;raylib.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\vcpkg\installed\x64-windows\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mongocxx-v_noabi-rhi-md.lib;bsoncxx-v_noabi-rhi-md.lib;mongoc2.dll.lib;bson2.dll.lib;raylib.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy C:\vcpkg\installed\x64-windows\bin\mongocxx-v_noabi-rhi-md.dll "$(OutDir)"
-
 copy C:\vcpkg\installed\x64-windows\bin\bsoncxx-v_noabi-rhi-md.dll "$(OutDir)"
-
-copy C:\vcpkg\installed\x64-windows\bin\mongoc-1.0.dll "$(OutDir)"
-
-copy C:\vcpkg\installed\x64-windows\bin\bson-1.0.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\mongoc2.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\bson2.dll "$(OutDir)"
 copy C:\vcpkg\installed\x64-windows\bin\raylib.dll "$(OutDir)"
-copy C:\vcpkg\installed\x64-windows\bin\*.dll "$(OutDir)"</Command>
+copy C:\vcpkg\installed\x64-windows\bin\cares.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\libcrypto-3-x64.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\libssl-3-x64.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\zlib1.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\utf8proc.dll "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -139,18 +140,19 @@ copy C:\vcpkg\installed\x64-windows\bin\*.dll "$(OutDir)"</Command>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\vcpkg\installed\x64-windows\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>mongocxx-v_noabi-rhi-md.lib;bsoncxx-v_noabi-rhi-md.lib;mongoc-1.0.lib;bson-1.0.lib;raylib.lib</AdditionalDependencies>
+      <AdditionalDependencies>mongocxx-v_noabi-rhi-md.lib;bsoncxx-v_noabi-rhi-md.lib;mongoc2.dll.lib;bson2.dll.lib;raylib.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy C:\vcpkg\installed\x64-windows\bin\mongocxx-v_noabi-rhi-md.dll "$(OutDir)"
-
 copy C:\vcpkg\installed\x64-windows\bin\bsoncxx-v_noabi-rhi-md.dll "$(OutDir)"
-
-copy C:\vcpkg\installed\x64-windows\bin\mongoc-1.0.dll "$(OutDir)"
-
-copy C:\vcpkg\installed\x64-windows\bin\bson-1.0.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\mongoc2.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\bson2.dll "$(OutDir)"
 copy C:\vcpkg\installed\x64-windows\bin\raylib.dll "$(OutDir)"
-copy C:\vcpkg\installed\x64-windows\bin\*.dll "$(OutDir)"</Command>
+copy C:\vcpkg\installed\x64-windows\bin\cares.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\libcrypto-3-x64.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\libssl-3-x64.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\zlib1.dll "$(OutDir)"
+copy C:\vcpkg\installed\x64-windows\bin\utf8proc.dll "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
