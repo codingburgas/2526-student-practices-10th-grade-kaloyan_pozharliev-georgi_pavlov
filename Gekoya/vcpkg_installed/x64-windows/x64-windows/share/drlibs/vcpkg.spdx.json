@@ -3,13 +3,13 @@
   "spdxVersion": "SPDX-2.2",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "documentNamespace": "https://spdx.org/spdxdocs/drlibs-x64-windows-2026-01-16-4da17db5-1e05-4484-b318-b285ec5798cd",
-  "name": "drlibs:x64-windows@2026-01-16 bd691a5eb116003bedfc648dc407296126037014392c3519c6a671618bf7d77b",
+  "documentNamespace": "https://spdx.org/spdxdocs/drlibs-x64-windows-2025-09-10-b6ed5843-7d2b-4a2c-b11a-d371ab15cdd2",
+  "name": "drlibs:x64-windows@2025-09-10 307541b3b8206320aeff5f39c0fd2c166bd42de2003ddf9a278b57e47073f5f9",
   "creationInfo": {
     "creators": [
-      "Tool: vcpkg-2025-12-16-44bb3ce006467fc13ba37ca099f64077b8bbf84d"
+      "Tool: vcpkg-2025-10-16-71538f2694db93da4668782d094768ba74c45991"
     ],
-    "created": "2026-03-18T20:30:19Z"
+    "created": "2026-03-28T14:49:41Z"
   },
   "relationships": [
     {
@@ -62,7 +62,7 @@
     {
       "name": "drlibs",
       "SPDXID": "SPDXRef-port",
-      "versionInfo": "2026-01-16",
+      "versionInfo": "2025-09-10",
       "downloadLocation": "git+https://github.com/Microsoft/vcpkg#ports/drlibs",
       "homepage": "https://github.com/mackron/dr_libs",
       "licenseConcluded": "(Unlicense OR MIT-0)",
@@ -74,7 +74,7 @@
     {
       "name": "drlibs:x64-windows",
       "SPDXID": "SPDXRef-binary",
-      "versionInfo": "bd691a5eb116003bedfc648dc407296126037014392c3519c6a671618bf7d77b",
+      "versionInfo": "307541b3b8206320aeff5f39c0fd2c166bd42de2003ddf9a278b57e47073f5f9",
       "downloadLocation": "NONE",
       "licenseConcluded": "(Unlicense OR MIT-0)",
       "licenseDeclared": "NOASSERTION",
@@ -84,14 +84,14 @@
     {
       "SPDXID": "SPDXRef-resource-0",
       "name": "mackron/dr_libs",
-      "downloadLocation": "git+https://github.com/mackron/dr_libs@5690d4671d7ad07ae6021756d7222eb159745f06",
+      "downloadLocation": "git+https://github.com/mackron/dr_libs@3141b54b6b0067d15c4a3ec0877f2141a2a11347",
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "checksums": [
         {
           "algorithm": "SHA512",
-          "checksumValue": "4f49024b219f160f12b24fbabd3aa3886bc76ca431b042e1d35812298b615e025f88af6df76ea4cf2e8b440cbbfaab65babb0fe880d240bd6bb354e2534bb64f"
+          "checksumValue": "4f0cc42843fde19d5fdc59b684530201fc6d396d73e1b3c45eb7bededff552213467e441b6674673848b49b8172ee5ce88ed959cedb7893db117fe93cd1e06b7"
         }
       ]
     }
@@ -103,7 +103,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "57b9398e7de8bbaef8f136810150057332caffdb707a4c5032f54b40981535c8"
+          "checksumValue": "47efad82cc99c9d5f88cf6fc9f219b47bc58e4db6509c6978f936c1b33b76392"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -115,7 +115,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "25b3152ab490c3f7efa64f0f6712846875e223447e2d391fa0bf59298e0e2110"
+          "checksumValue": "90408ff801124cfec1891c2f649e56c9e016f63079f15bf3ba5ad5e52113a229"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -139,7 +139,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "a35468f278f17cf9538ce189debf76a5854a77e139980f7b5185d67566a0c837"
+          "checksumValue": "8a482cbd742db29c280708a77abbd2d4ae1e0223ec63bb2e2cdeb75979f9535d"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -151,7 +151,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "d80e6800ddde29d50988ce894affe601858802d1bb8f047f98b84b33ae66c11a"
+          "checksumValue": "f10c4d048babfbc301ba0dca3b067807fae71d622bb75f6970082b39b4bacaf2"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -163,7 +163,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "721323e21794118d155675bc15713a4b303382c79e7510713afede424114889d"
+          "checksumValue": "5e60ebb49b738df317e45f955c5032bc7858540d0f90e426364c5f8dc9d848c4"
         }
       ],
       "licenseConcluded": "NOASSERTION",

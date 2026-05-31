@@ -3,13 +3,13 @@
   "spdxVersion": "SPDX-2.2",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "documentNamespace": "https://spdx.org/spdxdocs/cgltf-x64-windows-1.15-5615983d-c75b-4e37-864b-5d32b2c04bf6",
-  "name": "cgltf:x64-windows@1.15 4293c4e84b857f86646233f44adaeffa9e42c3075bdaaa279be3bbbbf5fce431",
+  "documentNamespace": "https://spdx.org/spdxdocs/cgltf-x64-windows-1.14-28a7775a-ff19-4c9b-9872-a16e15a1ed83",
+  "name": "cgltf:x64-windows@1.14 ac40f9845065edac7b067dd1798039bc75104efc9a815163369f92eaf16d3c6f",
   "creationInfo": {
     "creators": [
-      "Tool: vcpkg-2025-12-16-44bb3ce006467fc13ba37ca099f64077b8bbf84d"
+      "Tool: vcpkg-2025-10-16-71538f2694db93da4668782d094768ba74c45991"
     ],
-    "created": "2026-03-18T20:30:17Z"
+    "created": "2026-03-28T14:49:40Z"
   },
   "relationships": [
     {
@@ -57,7 +57,7 @@
     {
       "name": "cgltf",
       "SPDXID": "SPDXRef-port",
-      "versionInfo": "1.15",
+      "versionInfo": "1.14",
       "downloadLocation": "git+https://github.com/Microsoft/vcpkg#ports/cgltf",
       "homepage": "https://github.com/jkuhlmann/cgltf",
       "licenseConcluded": "MIT",
@@ -69,7 +69,7 @@
     {
       "name": "cgltf:x64-windows",
       "SPDXID": "SPDXRef-binary",
-      "versionInfo": "4293c4e84b857f86646233f44adaeffa9e42c3075bdaaa279be3bbbbf5fce431",
+      "versionInfo": "ac40f9845065edac7b067dd1798039bc75104efc9a815163369f92eaf16d3c6f",
       "downloadLocation": "NONE",
       "licenseConcluded": "MIT",
       "licenseDeclared": "NOASSERTION",
@@ -79,14 +79,14 @@
     {
       "SPDXID": "SPDXRef-resource-0",
       "name": "jkuhlmann/cgltf",
-      "downloadLocation": "git+https://github.com/jkuhlmann/cgltf@v1.15",
+      "downloadLocation": "git+https://github.com/jkuhlmann/cgltf@v1.14",
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "checksums": [
         {
           "algorithm": "SHA512",
-          "checksumValue": "9474b2ae79ac34015b21e4a20813bfc14ad037636304a28ce91011989202a11568b7f7201bca745701163e2c1077425065782a2aa265d53fe6edeb2e7d0e0b0a"
+          "checksumValue": "1f0e7dca353f1fca94f5936519895d59d4d2a3a1204545bf5420ff130c1d168158be4749010b2016c127ac9216929892f093ca10b5753fa622bea629aa3f194a"
         }
       ]
     }
@@ -98,7 +98,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "abed7438d14fff55edd2aa26570ed735b65bc536fefe0080f261e45dc28f7db2"
+          "checksumValue": "43608ccf64fd9740d44e4dd59af18315ca7aa1bc8839291bfd5c28a7f12e338b"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -110,7 +110,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "a745db1d6b8f17d1526d33397d1a343b0d40741d96ef57d1bfcdf9133d33e12b"
+          "checksumValue": "75245c98366143eb8966162d4eb573640fbf866e36e1de7333c5966e3c7d9206"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -134,7 +134,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "e378a21c084bf1f288bb799de827bb26906efb024255f1ecf1705ea13f11c6ec"
+          "checksumValue": "19db3bdf85f6aa991a3b9d056641bcb39a2ef11cd5211e7a9f6b6c307d9ebc64"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -146,7 +146,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "fb91760451d5c63bea1c0f606ddecb5cf8c17bfe02bf0f23ee4f635af5c47996"
+          "checksumValue": "f5ac2102335488d86c196ae8d3c7e5f0eddf7176c009ab677a1aca289fb67fc6"
         }
       ],
       "licenseConcluded": "NOASSERTION",

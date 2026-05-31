@@ -4,9 +4,7 @@
 #include <string>
 #include <cmath>
 
-// ─────────────────────────────────────────────
 //  Field state
-// ─────────────────────────────────────────────
 static std::string username = "";
 static std::string password = "";
 
@@ -15,9 +13,7 @@ static bool passwordActive = false;
 static bool showPassword = false;
 static bool rememberMe = false;
 
-// ─────────────────────────────────────────────
 //  Error / validation
-// ─────────────────────────────────────────────
 static bool        showError = false;
 static std::string errorMsg = "";
 static float       errorAlpha = 0.0f;
@@ -28,43 +24,31 @@ static float passErrorLerp = 0.0f;
 static bool  userHasError = false;
 static bool  passHasError = false;
 
-// ─────────────────────────────────────────────
 //  Shake
-// ─────────────────────────────────────────────
 static float shakeTimer = 0.0f;
 static float shakeOffsetX = 0.0f;
 static const float SHAKE_DURATION = 0.45f;
 static const float SHAKE_MAGNITUDE = 7.0f;
 
-// ─────────────────────────────────────────────
 //  Loading
-// ─────────────────────────────────────────────
 static bool  isLoading = false;
 static float loadingTimer = 0.0f;
 static bool  wasLoading = false;
 
-// ─────────────────────────────────────────────
 //  Field border lerp  (focus colour)
-// ─────────────────────────────────────────────
 static float userBorderLerp = 0.0f;
 static float passBorderLerp = 0.0f;
 
-// ─────────────────────────────────────────────
 //  Entrance animation
 //  Panel slides up from +60px and fades in over ENTER_DURATION seconds.
-// ─────────────────────────────────────────────
 static float entranceTimer = 0.0f;
 static const float ENTER_DURATION = 0.55f;
 
-// ─────────────────────────────────────────────
 //  Field focus glow lerp
-// ─────────────────────────────────────────────
 static float userGlowLerp = 0.0f;
 static float passGlowLerp = 0.0f;
 
-// ─────────────────────────────────────────────
 //  Button ripple
-// ─────────────────────────────────────────────
 static bool  rippleActive = false;
 static float rippleTimer = 0.0f;
 static float rippleX = 0.0f;
@@ -72,9 +56,7 @@ static float rippleY = 0.0f;
 static const float RIPPLE_DURATION = 0.45f;
 static const float RIPPLE_MAX_R = 120.0f;
 
-// ─────────────────────────────────────────────
 //  Background particles
-// ─────────────────────────────────────────────
 static const int PARTICLE_COUNT = 55;
 struct Particle { float x, y, vx, vy, r, alpha; };
 static Particle particles[PARTICLE_COUNT];
@@ -106,18 +88,14 @@ static void UpdateParticles(float dt, int screenW, int screenH)
     }
 }
 
-// ─────────────────────────────────────────────
 //  Lockout
-// ─────────────────────────────────────────────
 static const int   MAX_ATTEMPTS = 5;
 static const float LOCKOUT_SECONDS = 30.0f;
 static int   failedAttempts = 0;
 static float lockoutTimer = 0.0f;
 static bool  isLockedOut = false;
 
-// ─────────────────────────────────────────────
 //  Helpers
-// ─────────────────────────────────────────────
 static Color LerpColor(Color a, Color b, float t)
 {
     if (t < 0.0f) t = 0.0f;
@@ -164,9 +142,7 @@ static void TriggerError(const std::string& msg, bool badUser, bool badPass)
     shakeTimer = SHAKE_DURATION;
 }
 
-// ─────────────────────────────────────────────
 //  Input
-// ─────────────────────────────────────────────
 static void HandleInput()
 {
     if (isLoading || isLockedOut) return;
@@ -192,9 +168,7 @@ static void HandleInput()
     }
 }
 
-// ═════════════════════════════════════════════
 //  Main screen function
-// ═════════════════════════════════════════════
 AppState authScreen(Font font, SessionUser& sessionUser)
 {
     float dt = GetFrameTime();
@@ -325,37 +299,14 @@ AppState authScreen(Font font, SessionUser& sessionUser)
 
     HandleInput();
 
-    // ── Caps-lock detection ──────────────────
-    // Infer: a letter arrived uppercase while Shift is not held → Caps Lock must be on.
-    // We peek at the char queue without consuming it (HandleInput already drained it
-    // this frame, so the queue is empty — we set the flag based on the last typed char).
-    // Simpler reliable approach: track last raw char vs shift state inside HandleInput.
-    // We use a persistent flag updated each frame a char is typed.
     static bool capsLockOn = false;
-    {
-        // Re-check every frame by sampling a fresh char press (HandleInput already ran,
-        // so queue is empty — we rely on the static flag set below inside the key loop).
-    }
-    // Update the flag inside a local scope that mirrors HandleInput's loop:
     if (!isLoading && !isLockedOut)
     {
-        // We can't re-read GetCharPressed() here (it was already consumed).
-        // Instead track inside HandleInput by checking shift state on uppercase input.
-        // The capsLockOn flag is updated there via a lambda-equivalent static.
-        // For simplicity: use IsKeyDown on the raw key scan.
-        // Raylib provides no direct caps-lock query, so we rely on the inference:
-        // if KEY_A..KEY_Z is pressed and the resulting char was uppercase without shift → caps on.
-        // We record this in a persistent bool each frame a key fires.
         for (int k = KEY_A; k <= KEY_Z; k++)
         {
             if (IsKeyPressed(k))
             {
                 bool shiftHeld = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-                // If shift is not held but the key code itself maps to uppercase we can't
-                // tell from IsKeyPressed alone — use GetCharPressed workaround already consumed.
-                // Best-effort: assume caps on if shift NOT held on any letter press
-                // and last consumed char was uppercase. We skip re-implementation here
-                // and keep the static flag stable between frames.
                 (void)shiftHeld;
             }
         }
@@ -435,9 +386,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
 
     wasLoading = isLoading;
 
-    // ════════════════════════════════════════
     //  DRAWING
-    // ════════════════════════════════════════
     BeginDrawing();
     ClearBackground(BG_DARK);
 

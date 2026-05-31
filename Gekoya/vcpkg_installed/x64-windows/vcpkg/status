@@ -2,14 +2,14 @@ Package: vcpkg-cmake-config
 Version: 2024-05-23
 Architecture: x64-windows
 Multi-Arch: same
-Abi: dc72ae78d92909db3eda4c57d5276c760fd9e77d3bad3849b57c1ac50f423f63
+Abi: 0222733a0d16c4a8e7bb6fde1d07d0745ca40d4393b9fb9a503a866f11132d85
 Status: install ok installed
 
 Package: vcpkg-cmake
 Version: 2024-04-23
 Architecture: x64-windows
 Multi-Arch: same
-Abi: fa78d88a67c717e9094c6bbd52cf5370cdca95fb6b45eb4eea894c7fa232116d
+Abi: 725f21d22d847a0b9e231adeea6626d6f9d69c8e3a1000e7de237db5b8f769bf
 Status: install ok installed
 
 Package: stb
@@ -17,7 +17,7 @@ Version: 2024-07-29
 Port-Version: 1
 Architecture: x64-windows
 Multi-Arch: same
-Abi: 09516b44568e3542ba8d8f1cc465415d3d4ff9c2a9039453033bfb0eb613940f
+Abi: 425b5ada817f1083dd73330056688611c3e9a79200a677ff269f628aa23b5142
 Description: public domain header-only libraries
 Status: install ok installed
 
@@ -25,7 +25,7 @@ Package: qoi
 Version: 2023-08-10
 Architecture: x64-windows
 Multi-Arch: same
-Abi: f5ee788b4d5e59353e06ad96a75d47d8f7ae80fe38f8601309585944366fc120
+Abi: 57d4088fc40b013c38276790dcabd7f7a2a4c73e875cb7888d026c429c1f6e15
 Description: The Quite OK Image Format for fast, lossless image compression
 Status: install ok installed
 
@@ -34,7 +34,7 @@ Version: 2023-12-29
 Depends: vcpkg-cmake, vcpkg-cmake-config
 Architecture: x64-windows
 Multi-Arch: same
-Abi: 0a70f434277f549d9413cd537763dd0beb0cf47d619ef42f5b4e405218b944c1
+Abi: 9c1f5d31b5bba7d0725fae934befabda1c8ef155703fc462fa295005a5e2f223
 Description: NanoSVG is a simple stupid single-header-file SVG parser. It is accompanied by a simple SVG rasterizer.
 Status: install ok installed
 
@@ -42,7 +42,7 @@ Package: mmx
 Version: 2025-03-19
 Architecture: x64-windows
 Multi-Arch: same
-Abi: 7128fe0396081b93e3ff84e346e5705cbc11e50d2304e45e4517b3362e35aa81
+Abi: a8c104e7e42bfb01df2618bd83ba6cbade05b690be4966eeeba5a2587af80f2c
 Description: Single header libraries for C/C++
 Status: install ok installed
 
@@ -52,7 +52,7 @@ Port-Version: 1
 Depends: vcpkg-cmake, vcpkg-cmake-config
 Architecture: x64-windows
 Multi-Arch: same
-Abi: dcb965960700d62cfa474f3f8d7f76ba672e987ba2df70acd6aeaa4fabbd432e
+Abi: abaacf4cf7083c6dcec1c79bda83fe557429180ea6b6bfef4216c60978b7efcd
 Description: GLFW is a free, Open Source, multi-platform library for OpenGL, OpenGL ES and Vulkan application development. It provides a simple, platform-independent API for creating windows, contexts and surfaces, reading input, handling events, etc.
 Status: install ok installed
 
@@ -60,31 +60,31 @@ Package: dirent
 Version: 1.26
 Architecture: x64-windows
 Multi-Arch: same
-Abi: b4665ba464f5036d75d4622758b5c446f3e708dd52f843256de55b76076978e9
+Abi: 9489e1ce2fd35d48bfd0bdcbcd8db2fb0f6f2fa72bc38a28c4bed8e935859cf4
 Description: Dirent is a C/C++ programming interface that allows programmers to retrieve information about files and directories under Linux/UNIX. This project provides Linux compatible Dirent interface for Microsoft Windows.
 Status: install ok installed
 
 Package: cgltf
-Version: 1.15
+Version: 1.14
 Architecture: x64-windows
 Multi-Arch: same
-Abi: 4293c4e84b857f86646233f44adaeffa9e42c3075bdaaa279be3bbbbf5fce431
+Abi: ac40f9845065edac7b067dd1798039bc75104efc9a815163369f92eaf16d3c6f
 Description: Single-file glTF 2.0 loader and writer written in C99
 Status: install ok installed
 
 Package: miniaudio
-Version: 0.11.24
+Version: 0.11.23
 Architecture: x64-windows
 Multi-Arch: same
-Abi: 59a2fc766e6e31b8cc24c8d2a61d574ad0cf8d5ca655ad26256369db657fbd6f
+Abi: 83524dd69267d5c3e15226df5c36839084d641adc6d9e88ae082bbe4b77422bd
 Description: Audio playback and capture library written in C, in a single source file
 Status: install ok installed
 
 Package: drlibs
-Version: 2026-01-16
+Version: 2025-09-10
 Architecture: x64-windows
 Multi-Arch: same
-Abi: bd691a5eb116003bedfc648dc407296126037014392c3519c6a671618bf7d77b
+Abi: 307541b3b8206320aeff5f39c0fd2c166bd42de2003ddf9a278b57e47073f5f9
 Description: Single-file audio decoding libraries for C/C++
 Status: install ok installed
 
@@ -94,7 +94,7 @@ Port-Version: 1
 Depends: cgltf, dirent, glfw3, mmx, nanosvg, qoi, stb, vcpkg-cmake, vcpkg-cmake-config
 Architecture: x64-windows
 Multi-Arch: same
-Abi: ab0097d389c79700fd69120c86ce4817e551eb146578ac3ff4cf100a6f488aef
+Abi: 598cbfff8faa4b684875c2827109839c4638d741b728902e229384d68b6b7afa
 Description: A simple and easy-to-use library to enjoy videogames programming
 Default-Features: audio
 Status: install ok installed
@@ -112,43 +112,43 @@ Version: 1.3.1
 Depends: vcpkg-cmake
 Architecture: x64-windows
 Multi-Arch: same
-Abi: 6981cf021aa22ca9e020bbf63330f9bf824b9bdd35ea142ee0d61de6b92a387b
+Abi: daabcb403131040694f2878b9579789362adcf08b4aa06cffec320ce8a2e8e54
 Description: A compression library
 Status: install ok installed
 
 Package: utf8proc
-Version: 2.11.3
+Version: 2.11.0
 Depends: vcpkg-cmake, vcpkg-cmake-config
 Architecture: x64-windows
 Multi-Arch: same
-Abi: c74c1d1a49c8ee34d48a110e1fb5f9023bd05b704dd552b2bea97d1806244df1
+Abi: 0f3722e5838e14ccdc549f78d3b56825590c0b1bc8b33c8eaa808036d682847b
 Description: Clean C library for processing UTF-8 Unicode data.
 Status: install ok installed
 
 Package: libbson
-Version: 2.2.2
+Version: 1.30.6
 Depends: vcpkg-cmake, vcpkg-cmake-config
 Architecture: x64-windows
 Multi-Arch: same
-Abi: d9cdc91598ce2608843a9fcb35c8721612429b79b150c8a338e335e8e4c13503
+Abi: befbcadbb417786cbf8bd4dabd9c936f5ccd755fe4caf28cfd77b83d387980b3
 Description: libbson is a library providing useful routines related to building, parsing, and iterating BSON documents.
 Status: install ok installed
 
 Package: mongo-c-driver
-Version: 2.2.2
+Version: 1.30.6
 Depends: libbson, utf8proc, vcpkg-cmake, vcpkg-cmake-config, zlib
 Architecture: x64-windows
 Multi-Arch: same
-Abi: 705a13ad2ae278002a0c0bed288096f1123643697e97f5c0feec088f0f90448b
+Abi: b37783cac5e71b5c68d61c21bec1a2af01c4c8fc931d2914307de894563a50c2
 Description: Client library written in C for MongoDB.
 Status: install ok installed
 
 Package: mongo-cxx-driver
-Version: 4.1.4
+Version: 4.0.0
 Depends: libbson, mongo-c-driver, vcpkg-cmake, vcpkg-cmake-config
 Architecture: x64-windows
 Multi-Arch: same
-Abi: 760f578b4ed196c10a77deeeec0f0fc7846979fe78ff3644512ea6aeee21d3ba
+Abi: a47f9afade3ccdefd8e9eb0ca0a639e33c5e69f340050886917be5211b9bad57
 Description: MongoDB C++ Driver.
 Status: install ok installed
 
