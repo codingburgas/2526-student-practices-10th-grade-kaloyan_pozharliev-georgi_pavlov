@@ -479,7 +479,21 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
     {
         float navX = 200.0f + i * 150.0f;
         Rectangle navRect = { navX,0,130,(float)navH };
-        if (clicked && CheckCollisionPointRec(mouse, navRect)) activeNav = i;
+        if (clicked && CheckCollisionPointRec(mouse, navRect))
+        {
+            activeNav = i;
+            entranceTimer = 0.0f;
+
+            // Return the appropriate AppState based on the clicked item
+            switch (i)
+            {
+            case 0: return MAIN;
+            case 1: return CINEMAS;
+            case 2: return TICKETS;
+            case 3: return PROFILE;
+            default: break;
+            }
+        }
     }
 
     // ── Genre filter ──
