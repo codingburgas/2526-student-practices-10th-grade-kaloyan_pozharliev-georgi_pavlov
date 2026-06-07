@@ -8,6 +8,13 @@ enum AppState
     AUTH,
     REG,
     MAIN,
+    CINEMAS,
+    TICKETS,
+    PROFILE,
+    SEARCH,
+    BOOKING,
+    PAYMENT,
+    ADMIN,
 };
 
 struct SessionUser

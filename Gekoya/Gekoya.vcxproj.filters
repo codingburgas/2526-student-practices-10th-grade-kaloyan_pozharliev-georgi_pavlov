@@ -39,6 +39,15 @@
     <ClCompile Include="src\PL\mainScreen.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\PL\cinemasScreen.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\PL\profileScreen.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\PL\ticketsScreen.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\colors.h">
@@ -67,6 +76,15 @@
     </ClInclude>
     <ClInclude Include="src\PL\mainScreen.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\PL\cinemasScreen.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\PL\profileScreen.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\PL\ticketsScreen.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
