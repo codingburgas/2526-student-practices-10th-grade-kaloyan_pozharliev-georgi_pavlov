@@ -32,6 +32,10 @@ static std::vector<Movie> allMovies = {
       {80,220,160,255}, {{"11:30",true},{"14:00",true},{"16:45",false},{"19:30",true}} },
     { "KILLERS OF THE FLOWER MOON","DRAMA","English","2023-10-20",7.7f,206,
       {220,100,80,255}, {{"10:15",true},{"14:00",false},{"18:15",true},{"22:00",true}} },
+    { "POOR THINGS 2",   "FANTASY",  "English", "2024-06-01", 7.5f, 130,
+      {200,60,180,255}, {{"13:00",false},{"16:00",false},{"19:00",false},{"22:00",false}} },
+    { "INTERSTELLAR",    "SCI-FI",   "English", "2014-11-07", 8.7f, 169,
+      {100,200,255,255},{{"11:00",true},{"14:30",true},{"18:00",true},{"21:30",false}} },
 };
 
 static const int PARTICLE_COUNT = 55;
@@ -70,10 +74,9 @@ static const float ENTER_DURATION = 0.55f;
 static float EaseOutCubic(float t) { float inv = 1.0f - t; return 1.0f - inv * inv * inv; }
 
 static const char* navItems[] = { "MOVIES", "CINEMAS", "MY TICKETS", "PROFILE" };
-static int   activeNav = 0;
-static int   hoveredCard = -1;
-static int   selectedMovie = -1;
-static int   detailEnterDir = 1;
+static int         activeNav = 0;
+static int         hoveredCard = -1;
+static int         selectedMovie = -1;
 
 static std::string searchQuery = "";
 static bool        searchActive = false;
@@ -86,12 +89,21 @@ static float       toastTimer = 0.0f;
 static const float TOAST_DURATION = 2.8f;
 
 static float detailSlide = 0.0f;
+static float cardScrollX = 0.0f;
+static float cardScrollTarget = 0.0f;
 
 static bool  rippleActive = false;
 static float rippleTimer = 0.0f;
 static float rippleX = 0, rippleY = 0;
 static const float RIPPLE_DURATION = 0.5f;
 static const float RIPPLE_MAX_R = 140.0f;
+
+static bool  jumpToShowtime = false;
+static float showtimePulse = 0.0f;
+static bool  confirmPulseActive = false;
+static float confirmPulseTimer = 0.0f;
+
+static float cardHoverY[16] = {};
 
 static Color LerpColor(Color a, Color b, float t)
 {
@@ -108,6 +120,13 @@ static void ShowToast(const std::string& msg)
 {
     toastMsg = msg;
     toastTimer = TOAST_DURATION;
+}
+
+static bool IsSoldOut(const Movie& m)
+{
+    for (auto& s : m.shows)
+        if (s.available) return false;
+    return true;
 }
 
 static std::vector<int> FilteredIndices()
@@ -135,57 +154,92 @@ static std::vector<int> FilteredIndices()
 
 static void DrawMovieCard(Font font, int idx, float cx, float cy,
     int cardW, int cardH, bool hovered, bool selected,
-    Vector2 mouse, bool clicked)
+    Vector2 mouse, bool clicked, float dt)
 {
     const Movie& m = allMovies[idx];
+    bool         soldOut = IsSoldOut(m);
 
-    DrawRectangleRounded({ cx + 4,cy + 6,(float)cardW,(float)cardH }, 0.08f, 8, { 0,0,0,60 });
+    float targetLift = hovered ? -7.0f : 0.0f;
+    cardHoverY[idx] += (targetLift - cardHoverY[idx]) * dt * 14.0f;
+    float drawY = cy + cardHoverY[idx];
+
+    DrawRectangleRounded({ cx + 4, drawY + 8, (float)cardW, (float)cardH }, 0.08f, 8,
+        { 0, 0, 0, (unsigned char)(hovered ? 90 : 50) });
+
     Color border = selected ? m.accent : (hovered ? BORDER_FOCUS : BORDER_NORMAL);
-    DrawRectangleRounded({ cx,cy,(float)cardW,(float)cardH }, 0.08f, 8, BG_CARD);
-    DrawRectangleRoundedLines({ cx,cy,(float)cardW,(float)cardH }, 0.08f, 8, border);
-    DrawRectangleRounded({ cx,cy,(float)cardW,5 }, 0.5f, 4, m.accent);
+    DrawRectangleRounded({ cx, drawY, (float)cardW, (float)cardH }, 0.08f, 8, BG_CARD);
+    DrawRectangleRoundedLines({ cx, drawY, (float)cardW, (float)cardH }, 0.08f, 8, border);
+    DrawRectangleRounded({ cx, drawY, (float)cardW, 5 }, 0.5f, 4, m.accent);
 
-    Color posterBg = { (unsigned char)(m.accent.r / 5),(unsigned char)(m.accent.g / 5),(unsigned char)(m.accent.b / 5),255 };
-    DrawRectangle((int)cx + 10, (int)cy + 14, cardW - 20, 108, posterBg);
-    DrawRectangleLines((int)cx + 10, (int)cy + 14, cardW - 20, 108, m.accent);
-    float ix = cx + cardW / 2 - 12, iy = cy + 14 + 36;
+    Color posterBg = {
+        (unsigned char)(m.accent.r / 5),
+        (unsigned char)(m.accent.g / 5),
+        (unsigned char)(m.accent.b / 5), 255 };
+    DrawRectangle((int)cx + 10, (int)drawY + 14, cardW - 20, 108, posterBg);
+    DrawRectangleLines((int)cx + 10, (int)drawY + 14, cardW - 20, 108, m.accent);
+
+    float ix = cx + cardW / 2 - 12, iy = drawY + 14 + 30;
     DrawRectangle((int)ix, (int)iy, 24, 24, m.accent);
-    DrawTriangle({ ix + 7,iy + 5 }, { ix + 7,iy + 19 }, { ix + 21,iy + 12 }, posterBg);
+    DrawTriangle({ ix + 7, iy + 5 }, { ix + 7, iy + 19 }, { ix + 21, iy + 12 }, posterBg);
+
+    std::string posterTitle = m.title;
+    if (posterTitle.size() > 12) posterTitle = posterTitle.substr(0, 11) + "..";
+    Vector2 ptSz = MeasureTextEx(font, posterTitle.c_str(), 9, 1);
+    DrawTextEx(font, posterTitle.c_str(),
+        { cx + 10 + (cardW - 20 - ptSz.x) / 2, drawY + 14 + 82 }, 9, 1,
+        { m.accent.r, m.accent.g, m.accent.b, 200 });
 
     Vector2 gs = MeasureTextEx(font, m.genre, 9, 1);
-    DrawRectangleRounded({ cx + 10,cy + 128,gs.x + 10,16 }, 0.4f, 4, { m.accent.r,m.accent.g,m.accent.b,40 });
-    DrawTextEx(font, m.genre, { cx + 15,cy + 132 }, 9, 1, m.accent);
+    DrawRectangleRounded({ cx + 10, drawY + 128, gs.x + 10, 16 }, 0.4f, 4,
+        { m.accent.r, m.accent.g, m.accent.b, 40 });
+    DrawTextEx(font, m.genre, { cx + 15, drawY + 132 }, 9, 1, m.accent);
 
     std::string titleStr = m.title;
     if (titleStr.size() > 16) titleStr = titleStr.substr(0, 15) + "..";
-    DrawTextEx(font, titleStr.c_str(), { cx + 10,cy + 150 }, 10, 1, TEXT_PRIMARY);
+    DrawTextEx(font, titleStr.c_str(), { cx + 10, drawY + 150 }, 10, 1, TEXT_PRIMARY);
 
     char ratingBuf[16]; snprintf(ratingBuf, 16, "* %.1f", m.rating);
-    DrawTextEx(font, ratingBuf, { cx + 10,cy + 166 }, 10, 1, { 255,200,50,255 });
+    DrawTextEx(font, ratingBuf, { cx + 10, drawY + 166 }, 10, 1, { 255, 200, 50, 255 });
 
     char durBuf[16]; snprintf(durBuf, 16, "%d MIN", m.durationMin);
-    DrawTextEx(font, durBuf, { cx + 10,cy + 180 }, 9, 1, TEXT_SECONDARY);
+    DrawTextEx(font, durBuf, { cx + 10, drawY + 180 }, 9, 1, TEXT_SECONDARY);
 
-    Rectangle bookBtn = { cx + 10,cy + (float)cardH - 34,(float)cardW - 20,26 };
-    bool hoverBook = CheckCollisionPointRec(mouse, bookBtn);
-    DrawRectangleRounded(bookBtn, 0.35f, 6, hoverBook ? ACCENT_HOVER : Color{ m.accent.r, m.accent.g, m.accent.b, 200 });
-    Vector2 bts = MeasureTextEx(font, "BOOK NOW", 10, 1);
-    DrawTextEx(font, "BOOK NOW", { bookBtn.x + bookBtn.width / 2 - bts.x / 2,bookBtn.y + bookBtn.height / 2 - bts.y / 2 }, 10, 1, WHITE);
+    Rectangle bookBtn = { cx + 10, drawY + (float)cardH - 34, (float)cardW - 20, 26 };
+    bool hoverBook = CheckCollisionPointRec(mouse, bookBtn) && !soldOut;
+    Color bookBg = soldOut ? Color{ 40, 40, 55, 255 } : (hoverBook ? ACCENT_HOVER : Color{ m.accent.r, m.accent.g, m.accent.b, 200 });
+    DrawRectangleRounded(bookBtn, 0.35f, 6, bookBg);
+    const char* bookLabel = soldOut ? "SOLD OUT" : "BOOK NOW";
+    Vector2 bts = MeasureTextEx(font, bookLabel, 10, 1);
+    DrawTextEx(font, bookLabel,
+        { bookBtn.x + bookBtn.width / 2 - bts.x / 2, bookBtn.y + bookBtn.height / 2 - bts.y / 2 },
+        10, 1, soldOut ? TEXT_MUTED : WHITE);
+
+    if (soldOut)
+    {
+        DrawRectangleRounded({ cx, drawY, (float)cardW, (float)cardH }, 0.08f, 8, { 0, 0, 0, 100 });
+        Vector2 soSz = MeasureTextEx(font, "SOLD OUT", 13, 1);
+        DrawRectangleRounded(
+            { cx + cardW / 2 - soSz.x / 2 - 10, drawY + cardH / 2 - 14, soSz.x + 20, 28 },
+            0.3f, 6, { 180, 50, 50, 220 });
+        DrawTextEx(font, "SOLD OUT",
+            { cx + cardW / 2 - soSz.x / 2, drawY + cardH / 2 - 7 },
+            13, 1, WHITE);
+    }
 }
 
 static void DrawDetailView(Font font, int idx, int screenW, int screenH,
     float slideOffset, float time, float pulse,
-    Vector2 mouse, bool clicked, SessionUser& sessionUser)
+    Vector2 mouse, bool clicked, SessionUser& sessionUser, float dt)
 {
     const Movie& m = allMovies[idx];
-    float ox = slideOffset;
+    float        ox = slideOffset;
 
     int panelX = (int)(40 + ox);
     int panelY = 84;
     int panelW = screenW - 80;
     int panelH = screenH - 130;
 
-    DrawRectangle(panelX + 5, panelY + 8, panelW, panelH, { 0,0,0,60 });
+    DrawRectangle(panelX + 5, panelY + 8, panelW, panelH, { 0, 0, 0, 60 });
     DrawRectangleRounded({ (float)panelX,(float)panelY,(float)panelW,(float)panelH }, 0.04f, 10, BG_CARD);
     DrawRectangleRoundedLines({ (float)panelX,(float)panelY,(float)panelW,(float)panelH }, 0.04f, 10, BORDER_NORMAL);
     DrawRectangleRounded({ (float)panelX,(float)panelY,(float)panelW,6 }, 0.04f, 4, m.accent);
@@ -193,18 +247,43 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
     int leftX = panelX + 32;
     int topY = panelY + 28;
 
-    Color posterBg = { (unsigned char)(m.accent.r / 5),(unsigned char)(m.accent.g / 5),(unsigned char)(m.accent.b / 5),255 };
+    Color posterBg = {
+        (unsigned char)(m.accent.r / 5),
+        (unsigned char)(m.accent.g / 5),
+        (unsigned char)(m.accent.b / 5), 255 };
     DrawRectangle(leftX, topY, 200, 280, posterBg);
     DrawRectangleLines(leftX, topY, 200, 280, m.accent);
-    DrawRectangle(leftX + 80, topY + 110, 40, 40, m.accent);
-    DrawTriangle({ (float)leftX + 90,(float)topY + 118 }, { (float)leftX + 90,(float)topY + 142 }, { (float)leftX + 118,(float)topY + 130 }, posterBg);
+
+    DrawRectangle(leftX + 80, topY + 90, 40, 40, m.accent);
+    DrawTriangle(
+        { (float)leftX + 90, (float)topY + 98 },
+        { (float)leftX + 90, (float)topY + 122 },
+        { (float)leftX + 118, (float)topY + 110 }, posterBg);
+
+    std::string posterTitle = m.title;
+    Vector2 ptSz = MeasureTextEx(font, posterTitle.c_str(), 10, 1);
+    while (ptSz.x > 180 && posterTitle.size() > 4)
+    {
+        posterTitle = posterTitle.substr(0, posterTitle.size() - 1);
+        ptSz = MeasureTextEx(font, (posterTitle + "..").c_str(), 10, 1);
+    }
+    DrawTextEx(font, posterTitle.c_str(),
+        { (float)(leftX + 100 - (int)ptSz.x / 2), (float)(topY + 145) }, 10, 1,
+        { m.accent.r, m.accent.g, m.accent.b, 200 });
+
+    Vector2 rdSz = MeasureTextEx(font, m.releaseDate, 9, 1);
+    DrawTextEx(font, m.releaseDate,
+        { (float)(leftX + 100 - (int)rdSz.x / 2), (float)(topY + 162) }, 9, 1,
+        { 180, 180, 200, 160 });
 
     Vector2 gs = MeasureTextEx(font, m.genre, 11, 1);
-    DrawRectangleRounded({ (float)leftX,(float)(topY + 290),gs.x + 14,20 }, 0.4f, 4, { m.accent.r,m.accent.g,m.accent.b,50 });
+    DrawRectangleRounded({ (float)leftX,(float)(topY + 290),gs.x + 14,20 }, 0.4f, 4,
+        { m.accent.r,m.accent.g,m.accent.b,50 });
     DrawTextEx(font, m.genre, { (float)(leftX + 7),(float)(topY + 294) }, 11, 1, m.accent);
 
     Vector2 ls = MeasureTextEx(font, m.language, 11, 1);
-    DrawRectangleRounded({ (float)(leftX + (int)gs.x + 20),(float)(topY + 290),ls.x + 14,20 }, 0.4f, 4, { 60,60,80,180 });
+    DrawRectangleRounded({ (float)(leftX + (int)gs.x + 20),(float)(topY + 290),ls.x + 14,20 }, 0.4f, 4,
+        { 60,60,80,180 });
     DrawTextEx(font, m.language, { (float)(leftX + (int)gs.x + 27),(float)(topY + 294) }, 11, 1, TEXT_SECONDARY);
 
     char ratingBuf[32]; snprintf(ratingBuf, 32, "* %.1f / 10", m.rating);
@@ -223,17 +302,26 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
 
     const char* synopsis = "An epic tale of adventure and wonder brought to life on the big screen. Not to be missed.";
     std::string syn = synopsis;
-    int lineY = topY + 66;
-    int lineChars = 55;
+    int lineY = topY + 66, lineChars = 55;
     for (int s = 0; s < (int)syn.size(); s += lineChars)
     {
-        std::string line = syn.substr(s, lineChars);
-        DrawTextEx(font, line.c_str(), { (float)rightX,(float)lineY }, 12, 0.5f, TEXT_PRIMARY);
+        DrawTextEx(font, syn.substr(s, lineChars).c_str(), { (float)rightX,(float)lineY }, 12, 0.5f, TEXT_PRIMARY);
         lineY += 18;
     }
 
     int showY = topY + 140;
-    DrawTextEx(font, "AVAILABLE SHOWTIMES", { (float)rightX,(float)showY }, 11, 1, TEXT_SECONDARY);
+
+    if (jumpToShowtime)
+    {
+        showtimePulse += dt * 6.0f;
+        if (showtimePulse > 3.14159f * 4) { showtimePulse = 0; jumpToShowtime = false; }
+    }
+    float showtimeGlow = jumpToShowtime ? (sinf(showtimePulse) + 1.0f) / 2.0f : 0.0f;
+
+    Color showtimeLabel = jumpToShowtime
+        ? LerpColor(TEXT_SECONDARY, { 255, 200, 80, 255 }, showtimeGlow)
+        : TEXT_SECONDARY;
+    DrawTextEx(font, "AVAILABLE SHOWTIMES", { (float)rightX,(float)showY }, 11, 1, showtimeLabel);
     DrawRectangle(rightX, showY + 16, rightW - 40, 1, BORDER_NORMAL);
     showY += 26;
 
@@ -250,6 +338,13 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
         Color showBg = sel ? m.accent : (hov && avail) ? LerpColor(BG_INPUT, m.accent, 0.3f) : avail ? BG_INPUT : Color{ 25,25,35,255 };
         Color showBdr = sel ? m.accent : avail ? (hov ? BORDER_FOCUS : BORDER_NORMAL) : Color{ 50,50,60,255 };
         Color showTxt = avail ? (sel ? WHITE : TEXT_PRIMARY) : TEXT_MUTED;
+
+        if (jumpToShowtime && avail)
+        {
+            unsigned char glowA = (unsigned char)(showtimeGlow * 60.0f);
+            DrawRectangleRounded({ (float)sx - 3,(float)showY - 3,92,44 }, 0.2f, 6,
+                { 255, 200, 80, glowA });
+        }
 
         DrawRectangleRounded({ (float)sx,(float)showY,86,38 }, 0.2f, 6, showBg);
         DrawRectangleRoundedLines({ (float)sx,(float)showY,86,38 }, 0.2f, 6, showBdr);
@@ -284,18 +379,23 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
         bool sel = (selectedSeat == i);
         bool hov = CheckCollisionPointRec(mouse, { (float)stx,(float)seatY,108,52 });
 
-        Color stBg = sel ? Color{ seatTypes[i].col.r,seatTypes[i].col.g,seatTypes[i].col.b,40 } : hov ? Color{ seatTypes[i].col.r,seatTypes[i].col.g,seatTypes[i].col.b,20 } : BG_INPUT;
+        Color stBg = sel ? Color{ seatTypes[i].col.r,seatTypes[i].col.g,seatTypes[i].col.b,40 }
+        : hov ? Color{ seatTypes[i].col.r,seatTypes[i].col.g,seatTypes[i].col.b,20 } : BG_INPUT;
         Color stBdr = sel ? seatTypes[i].col : (hov ? BORDER_FOCUS : BORDER_NORMAL);
 
         DrawRectangleRounded({ (float)stx,(float)seatY,108,52 }, 0.15f, 6, stBg);
         DrawRectangleRoundedLines({ (float)stx,(float)seatY,108,52 }, 0.15f, 6, stBdr);
 
         Vector2 ns = MeasureTextEx(font, seatTypes[i].name, 11, 1);
-        DrawTextEx(font, seatTypes[i].name, { (float)stx + 54 - ns.x / 2,(float)seatY + 8 }, 11, 1, sel ? seatTypes[i].col : TEXT_PRIMARY);
+        DrawTextEx(font, seatTypes[i].name,
+            { (float)stx + 54 - ns.x / 2,(float)seatY + 8 }, 11, 1,
+            sel ? seatTypes[i].col : TEXT_PRIMARY);
 
         char priceBuf[16]; snprintf(priceBuf, 16, "$%d", seatTypes[i].price);
         Vector2 ps = MeasureTextEx(font, priceBuf, 13, 1);
-        DrawTextEx(font, priceBuf, { (float)stx + 54 - ps.x / 2,(float)seatY + 26 }, 13, 1, sel ? seatTypes[i].col : TEXT_SECONDARY);
+        DrawTextEx(font, priceBuf,
+            { (float)stx + 54 - ps.x / 2,(float)seatY + 26 }, 13, 1,
+            sel ? seatTypes[i].col : TEXT_SECONDARY);
 
         if (clicked && hov) selectedSeat = i;
     }
@@ -305,47 +405,74 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
     bool hoverConfirm = CheckCollisionPointRec(mouse, confirmBtn);
     bool canConfirm = (selectedShow >= 0 && selectedSeat >= 0);
 
+    if (confirmPulseActive)
+    {
+        confirmPulseTimer += dt * 5.0f;
+        if (confirmPulseTimer > 3.14159f * 3) { confirmPulseActive = false; confirmPulseTimer = 0; }
+        float p = (sinf(confirmPulseTimer) + 1.0f) / 2.0f;
+        DrawRectangleRounded(
+            { confirmBtn.x - 4, confirmBtn.y - 4, confirmBtn.width + 8, confirmBtn.height + 8 },
+            0.25f, 8, { 200, 80, 80, (unsigned char)(p * 80.0f) });
+    }
+
     Color confirmBg = canConfirm ? (hoverConfirm ? ACCENT_HOVER : ACCENT) : Color{ 40,40,55,255 };
     Color confirmTxt = canConfirm ? WHITE : TEXT_MUTED;
-
     DrawRectangleRounded(confirmBtn, 0.25f, 8, confirmBg);
 
     if (rippleActive)
     {
         float rp = rippleTimer / RIPPLE_DURATION;
-        DrawCircle((int)rippleX, (int)rippleY, rp * RIPPLE_MAX_R, { 255,255,255,(unsigned char)((1.0f - rp) * 50.0f) });
+        DrawCircle((int)rippleX, (int)rippleY, rp * RIPPLE_MAX_R,
+            { 255,255,255,(unsigned char)((1.0f - rp) * 50.0f) });
     }
 
-    Vector2 cts = MeasureTextEx(font, canConfirm ? "CONFIRM BOOKING" : "SELECT SHOWTIME AND SEAT TYPE", 13, 1);
-    DrawTextEx(font, canConfirm ? "CONFIRM BOOKING" : "SELECT SHOWTIME AND SEAT TYPE",
+    const char* confirmLabel = canConfirm ? "CONFIRM BOOKING" : "SELECT SHOWTIME AND SEAT TYPE";
+    Vector2 cts = MeasureTextEx(font, confirmLabel, 13, 1);
+    DrawTextEx(font, confirmLabel,
         { confirmBtn.x + confirmBtn.width / 2 - cts.x / 2, confirmBtn.y + confirmBtn.height / 2 - cts.y / 2 },
         13, 1, confirmTxt);
 
-    if (clicked && hoverConfirm && canConfirm)
+    if (clicked && hoverConfirm)
     {
-        rippleActive = true; rippleTimer = 0; rippleX = mouse.x; rippleY = mouse.y;
-        std::string note = "BOOKING CONFIRMED: ";
-        note += m.title;
-        note += "  ";
-        note += m.shows[selectedShow].time;
-        note += "  ";
-        note += seatTypes[selectedSeat].name;
-        ShowToast(note);
-        selectedShow = -1; selectedSeat = -1;
+        if (canConfirm)
+        {
+            rippleActive = true; rippleTimer = 0; rippleX = mouse.x; rippleY = mouse.y;
+            std::string note = "BOOKING CONFIRMED: ";
+            note += m.title;
+            note += "  ";
+            note += m.shows[selectedShow].time;
+            note += "  ";
+            note += seatTypes[selectedSeat].name;
+            ShowToast(note);
+            selectedShow = -1; selectedSeat = -1;
+        }
+        else
+        {
+            confirmPulseActive = true;
+            confirmPulseTimer = 0.0f;
+            jumpToShowtime = true;
+            showtimePulse = 0.0f;
+        }
     }
 
-    Rectangle backBtn = { (float)(panelX + 8),(float)(panelY + 10),80,26 };
+    Rectangle backBtn = { (float)(panelX + 12),(float)(panelY + 12),110,34 };
     bool hoverBack = CheckCollisionPointRec(mouse, backBtn);
-    DrawRectangleRounded(backBtn, 0.3f, 6, hoverBack ? Color{ 60,60,80,255 } : Color{ 30,30,50,200 });
-    DrawRectangleRoundedLines(backBtn, 0.3f, 6, BORDER_NORMAL);
-    Vector2 bkSz = MeasureTextEx(font, "< BACK", 11, 1);
-    DrawTextEx(font, "< BACK", { backBtn.x + 40 - bkSz.x / 2,backBtn.y + 13 - bkSz.y / 2 }, 11, 1, hoverBack ? TEXT_PRIMARY : TEXT_SECONDARY);
+    DrawRectangleRounded(backBtn, 0.3f, 6,
+        hoverBack ? Color{ 72, 130, 255, 200 } : Color{ 30, 35, 60, 220 });
+    DrawRectangleRoundedLines(backBtn, 0.3f, 6,
+        hoverBack ? ACCENT : BORDER_NORMAL);
+    Vector2 bkSz = MeasureTextEx(font, "< BACK", 13, 1);
+    DrawTextEx(font, "< BACK",
+        { backBtn.x + backBtn.width / 2 - bkSz.x / 2, backBtn.y + backBtn.height / 2 - bkSz.y / 2 },
+        13, 1, hoverBack ? WHITE : TEXT_PRIMARY);
 
     if (clicked && hoverBack)
     {
         selectedMovie = -1;
         selectedShow = -1;
         selectedSeat = -1;
+        jumpToShowtime = false;
+        confirmPulseActive = false;
     }
 }
 
@@ -366,11 +493,12 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
     UpdateParticles(dt, screenW, screenH);
 
     if (toastTimer > 0) toastTimer -= dt;
-
     if (rippleActive) { rippleTimer += dt; if (rippleTimer >= RIPPLE_DURATION) rippleActive = false; }
 
     float targetSlide = (selectedMovie >= 0) ? 0.0f : (float)screenW;
     detailSlide += (targetSlide - detailSlide) * dt * 16.0f;
+
+    cardScrollX += (cardScrollTarget - cardScrollX) * dt * 12.0f;
 
     Vector2 mouse = GetMousePosition();
     bool    clicked = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
@@ -402,18 +530,35 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
 
     std::vector<int> filtered = FilteredIndices();
 
+    int totalCardsW = (int)filtered.size() * (cardW + cardSpacing);
+    float maxScroll = (float)std::max(0, totalCardsW - (screenW - cardsStartX * 2));
+
+    float wheel = GetMouseWheelMove();
+    if (selectedMovie < 0 && wheel != 0)
+    {
+        cardScrollTarget -= wheel * 60.0f;
+        if (cardScrollTarget < 0) cardScrollTarget = 0;
+        if (cardScrollTarget > maxScroll) cardScrollTarget = maxScroll;
+    }
+
     hoveredCard = -1;
     if (selectedMovie < 0)
     {
         for (int fi = 0; fi < (int)filtered.size(); fi++)
         {
-            float cx = (float)(cardsStartX + fi * (cardW + cardSpacing));
+            float cx = (float)(cardsStartX + fi * (cardW + cardSpacing)) - cardScrollX;
             float cy = (float)listY;
-            Rectangle cr = { cx,cy,(float)cardW,(float)cardH };
+            Rectangle cr = { cx, cy, (float)cardW, (float)cardH };
+            if (cx + cardW < 0 || cx > screenW) continue;
             if (CheckCollisionPointRec(mouse, cr))
             {
                 hoveredCard = fi;
-                if (clicked) { selectedMovie = filtered[fi]; entranceTimer = 0; }
+                if (clicked && !IsSoldOut(allMovies[filtered[fi]]))
+                {
+                    selectedMovie = filtered[fi];
+                    entranceTimer = 0;
+                    jumpToShowtime = false;
+                }
             }
         }
     }
@@ -460,9 +605,13 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
         DrawCircle(screenW / 2, screenH / 2, (float)r, Color{ 55, 95, 210, a });
     }
 
+    for (int sy = 0; sy < screenH; sy += 4)
+        DrawRectangle(0, sy, screenW, 1, { 0, 0, 0, 12 });
+
     DrawRectangle(0, 0, screenW, navH, { 10,12,28,220 });
     DrawRectangle(0, navH - 1, screenW, 1, BORDER_NORMAL);
-    DrawTextEx(font, "Gekoya", { 32,(float)(navH / 2) - 11 }, 22, 1.5f, { TEXT_PRIMARY.r,TEXT_PRIMARY.g,TEXT_PRIMARY.b,PA });
+    DrawTextEx(font, "Gekoya", { 32,(float)(navH / 2) - 11 }, 22, 1.5f,
+        { TEXT_PRIMARY.r,TEXT_PRIMARY.g,TEXT_PRIMARY.b,PA });
 
     for (int i = 0; i < 4; i++)
     {
@@ -472,7 +621,8 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
         DrawTextEx(font, navItems[i], { navX,navY }, 12, 1,
             isA ? Color{ TEXT_PRIMARY.r,TEXT_PRIMARY.g,TEXT_PRIMARY.b,PA }
         : Color{ TEXT_SECONDARY.r,TEXT_SECONDARY.g,TEXT_SECONDARY.b,PA });
-        if (isA) DrawRectangle((int)navX, navH - 2, (int)MeasureTextEx(font, navItems[i], 12, 1).x, 2, ACCENT);
+        if (isA) DrawRectangle((int)navX, navH - 2,
+            (int)MeasureTextEx(font, navItems[i], 12, 1).x, 2, ACCENT);
     }
 
     Rectangle searchBox = { (float)(screenW - 560),(float)(navH / 2 - 16),220,32 };
@@ -496,26 +646,54 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
     }
 
     std::string greeting = "HI, " + sessionUser.username;
-    DrawTextEx(font, greeting.c_str(), { (float)(screenW - 230),(float)(navH / 2 - 7) }, 11, 1,
-        { TEXT_SECONDARY.r,TEXT_SECONDARY.g,TEXT_SECONDARY.b,PA });
+    Vector2 greetSz = MeasureTextEx(font, greeting.c_str(), 13, 1);
+    DrawRectangleRounded(
+        { (float)(screenW - 220), (float)(navH / 2 - 14), greetSz.x + 20, 28 },
+        0.3f, 6, { 30, 40, 70, 180 });
+    DrawTextEx(font, greeting.c_str(),
+        { (float)(screenW - 210),(float)(navH / 2 - 7) }, 13, 1,
+        { TEXT_PRIMARY.r,TEXT_PRIMARY.g,TEXT_PRIMARY.b,PA });
 
-    Rectangle logoutBtn = { (float)(screenW - 100),(float)(navH / 2 - 14),88,28 };
+    Rectangle logoutBtn = { (float)(screenW - 105),(float)(navH / 2 - 14),88,28 };
+
+    DrawRectangle(0, 0, screenW, navH, { 10,12,28,220 });
+    DrawRectangle(0, navH - 1, screenW, 1, BORDER_NORMAL);
+    DrawTextEx(font, "Gekoya", { 32,(float)(navH / 2) - 11 }, 22, 1.5f,
+        { TEXT_PRIMARY.r,TEXT_PRIMARY.g,TEXT_PRIMARY.b,PA });
+
+    for (int i = 0; i < 4; i++)
+    {
+        float navX = 200.0f + i * 150.0f;
+        float navY = (float)(navH / 2) - 7;
+        bool  isA = (activeNav == i);
+        DrawTextEx(font, navItems[i], { navX,navY }, 12, 1,
+            isA ? Color{ TEXT_PRIMARY.r,TEXT_PRIMARY.g,TEXT_PRIMARY.b,PA }
+        : Color{ TEXT_SECONDARY.r,TEXT_SECONDARY.g,TEXT_SECONDARY.b,PA });
+        if (isA) DrawRectangle((int)navX, navH - 2,
+            (int)MeasureTextEx(font, navItems[i], 12, 1).x, 2, ACCENT);
+    }
+
+    logoutBtn = { (float)(screenW - 105),(float)(navH / 2 - 14),88,28 };
     bool hoverLogout = CheckCollisionPointRec(mouse, logoutBtn);
     DrawRectangleRounded(logoutBtn, 0.3f, 6, hoverLogout ? Color{ 180,50,50,220 } : Color{ 80,30,30,180 });
     DrawRectangleRoundedLines(logoutBtn, 0.3f, 6, hoverLogout ? Color{ 220,80,80,255 } : Color{ 140,50,50,200 });
     Vector2 loSz = MeasureTextEx(font, "LOG OUT", 11, 1);
     DrawTextEx(font, "LOG OUT",
-        { logoutBtn.x + logoutBtn.width / 2 - loSz.x / 2, logoutBtn.y + logoutBtn.height / 2 - loSz.y / 2 },
+        { logoutBtn.x + logoutBtn.width / 2 - loSz.x / 2,
+          logoutBtn.y + logoutBtn.height / 2 - loSz.y / 2 },
         11, 1, hoverLogout ? WHITE : Color{ 200,100,100,255 });
 
     if (clicked && hoverLogout)
     {
         selectedMovie = -1;
-        searchQuery = "";
         searchActive = false;
         filterGenre = 0;
         entranceTimer = 0.0f;
         particlesInit = false;
+        cardScrollX = 0;
+        cardScrollTarget = 0;
+        jumpToShowtime = false;
+        confirmPulseActive = false;
         sessionUser.username = "";
         sessionUser.email = "";
         EndDrawing();
@@ -533,7 +711,7 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
         DrawRectangleRoundedLines(fr, 0.3f, 6, sel ? ACCENT : (hov ? BORDER_FOCUS : BORDER_NORMAL));
         DrawTextEx(font, genreFilters[i], { fx + 10,(float)filterBarY + 8 }, 11, 1,
             sel ? WHITE : (hov ? TEXT_PRIMARY : TEXT_SECONDARY));
-        if (clicked && hov) filterGenre = i;
+        if (clicked && hov) { filterGenre = i; cardScrollTarget = 0; }
     }
 
     char countBuf[32];
@@ -543,37 +721,57 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
 
     if (selectedMovie < 0 || detailSlide > screenW * 0.05f)
     {
+        BeginScissorMode(0, listY - 4, screenW, screenH - listY - 34);
+
         if (filtered.empty())
         {
             Vector2 noSz = MeasureTextEx(font, "NO MOVIES FOUND", 18, 1);
-            DrawTextEx(font, "NO MOVIES FOUND", { (float)(screenW / 2) - noSz.x / 2,(float)(screenH / 2) - 40 }, 18, 1, TEXT_MUTED);
+            DrawTextEx(font, "NO MOVIES FOUND",
+                { (float)(screenW / 2) - noSz.x / 2,(float)(screenH / 2) - 40 }, 18, 1, TEXT_MUTED);
         }
         else
         {
             for (int fi = 0; fi < (int)filtered.size(); fi++)
             {
                 int   idx = filtered[fi];
-                float cx = (float)(cardsStartX + fi * (cardW + cardSpacing));
+                float cx = (float)(cardsStartX + fi * (cardW + cardSpacing)) - cardScrollX;
                 float cy = (float)listY;
-                float cardDelay = (float)fi * 0.06f;
-                float cardAlphaT = EaseOutCubic(std::max(0.0f, entranceTimer - cardDelay) / (ENTER_DURATION * 0.8f));
-                (void)cardAlphaT;
-                DrawMovieCard(font, idx, cx, cy, cardW, cardH, (hoveredCard == fi), (selectedMovie == idx), mouse, clicked);
+                if (cx + cardW < 0 || cx > screenW) continue;
+                DrawMovieCard(font, idx, cx, cy, cardW, cardH,
+                    (hoveredCard == fi), (selectedMovie == idx), mouse, clicked, dt);
             }
+        }
+
+        EndScissorMode();
+
+        if (maxScroll > 0)
+        {
+            float trackW = (float)(screenW - cardsStartX * 2);
+            float thumbW = trackW * ((float)(screenW - cardsStartX * 2) / (float)totalCardsW);
+            float thumbX = (float)cardsStartX + (cardScrollX / maxScroll) * (trackW - thumbW);
+            int   trackY = screenH - 46;
+            DrawRectangle(cardsStartX, trackY, (int)trackW, 3, { 40,45,70,180 });
+            DrawRectangleRounded({ thumbX,(float)trackY - 1,thumbW,5 }, 0.5f, 4, ACCENT);
         }
     }
 
     if (selectedMovie >= 0 || detailSlide < screenW * 0.95f)
     {
         DrawDetailView(font, selectedMovie >= 0 ? selectedMovie : 0,
-            screenW, screenH, detailSlide, time, pulse, mouse, clicked, sessionUser);
+            screenW, screenH, detailSlide, time, pulse, mouse, clicked, sessionUser, dt);
     }
 
     int barY = screenH - 34;
     DrawRectangle(0, barY, screenW, 34, { 10,12,28,210 });
     DrawRectangle(0, barY, screenW, 1, BORDER_NORMAL);
+
+    int availableShows = 0;
+    for (auto& mv : allMovies)
+        for (auto& sh : mv.shows)
+            if (sh.available) availableShows++;
+
     char cinBuf[32];  snprintf(cinBuf, 32, "%d CINEMAS NEARBY", 3);
-    char showBuf[32]; snprintf(showBuf, 32, "%d SHOWS TODAY", 12);
+    char showBuf[32]; snprintf(showBuf, 32, "%d SHOWS TODAY", availableShows);
     char filBuf[32];  snprintf(filBuf, 32, "%d FILMS SHOWING", (int)allMovies.size());
     DrawTextEx(font, cinBuf, { 32,(float)(barY + 10) }, 11, 1, TEXT_SECONDARY);
     DrawTextEx(font, showBuf, { 220,(float)(barY + 10) }, 11, 1, TEXT_SECONDARY);
