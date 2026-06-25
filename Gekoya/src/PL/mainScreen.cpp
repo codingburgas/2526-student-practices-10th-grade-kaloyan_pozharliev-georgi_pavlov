@@ -838,7 +838,16 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
     for (int sy = 0; sy < screenH; sy += 4)
         DrawRectangle(0, sy, screenW, 1, { 0, 0, 0, 12 });
 
-    // ── Nav bar (first pass) ──
+    Rectangle searchBox = { (float)(screenW - 560),(float)(navH / 2 - 16),220,32 };
+    if (clicked) searchActive = CheckCollisionPointRec(mouse, searchBox);
+    if (searchActive)
+    {
+        if (IsKeyPressed(KEY_BACKSPACE) && !searchQuery.empty()) searchQuery.pop_back();
+        int k = GetCharPressed();
+        while (k > 0) { if (searchQuery.size() < 32) searchQuery += (char)k; k = GetCharPressed(); }
+    }
+
+    // ── Nav bar (background + title + links) ──
     DrawRectangle(0, 0, screenW, navH, { 10,12,28,220 });
     DrawRectangle(0, navH - 1, screenW, 1, BORDER_NORMAL);
     DrawTextEx(font, "Gekoya", { 32,(float)(navH / 2) - 11 }, 22, 1.5f,
@@ -856,14 +865,7 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
             (int)MeasureTextEx(font, navItems[i], 12, 1).x, 2, ACCENT);
     }
 
-    Rectangle searchBox = { (float)(screenW - 560),(float)(navH / 2 - 16),220,32 };
-    if (clicked) searchActive = CheckCollisionPointRec(mouse, searchBox);
-    if (searchActive)
-    {
-        if (IsKeyPressed(KEY_BACKSPACE) && !searchQuery.empty()) searchQuery.pop_back();
-        int k = GetCharPressed();
-        while (k > 0) { if (searchQuery.size() < 32) searchQuery += (char)k; k = GetCharPressed(); }
-    }
+    // ── Search box (drawn after nav background so it stays visible) ──
     DrawRectangleRounded(searchBox, 0.3f, 6, BG_INPUT);
     DrawRectangleRoundedLines(searchBox, 0.3f, 6, searchActive ? BORDER_FOCUS : BORDER_NORMAL);
     if (searchQuery.empty() && !searchActive)
@@ -876,6 +878,7 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
         DrawRectangle((int)cx2, (int)searchBox.y + 6, 2, 20, BORDER_FOCUS);
     }
 
+    // ── Greeting (drawn after nav background so it stays visible) ──
     std::string greeting = "HI, " + sessionUser.username;
     Vector2 greetSz = MeasureTextEx(font, greeting.c_str(), 13, 1);
     DrawRectangleRounded(
@@ -884,24 +887,6 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
     DrawTextEx(font, greeting.c_str(),
         { (float)(screenW - 210),(float)(navH / 2 - 7) }, 13, 1,
         { TEXT_PRIMARY.r,TEXT_PRIMARY.g,TEXT_PRIMARY.b,PA });
-
-    // ── Nav bar (second pass — redraw on top) ──
-    DrawRectangle(0, 0, screenW, navH, { 10,12,28,220 });
-    DrawRectangle(0, navH - 1, screenW, 1, BORDER_NORMAL);
-    DrawTextEx(font, "Gekoya", { 32,(float)(navH / 2) - 11 }, 22, 1.5f,
-        { TEXT_PRIMARY.r,TEXT_PRIMARY.g,TEXT_PRIMARY.b,PA });
-
-    for (int i = 0; i < 4; i++)
-    {
-        float navX = 200.0f + i * 150.0f;
-        float navY = (float)(navH / 2) - 7;
-        bool  isA = (activeNav == i);
-        DrawTextEx(font, navItems[i], { navX,navY }, 12, 1,
-            isA ? Color{ TEXT_PRIMARY.r,TEXT_PRIMARY.g,TEXT_PRIMARY.b,PA }
-        : Color{ TEXT_SECONDARY.r,TEXT_SECONDARY.g,TEXT_SECONDARY.b,PA });
-        if (isA) DrawRectangle((int)navX, navH - 2,
-            (int)MeasureTextEx(font, navItems[i], 12, 1).x, 2, ACCENT);
-    }
 
     // ── Logout button ──
     Rectangle logoutBtn = { (float)(screenW - 105),(float)(navH / 2 - 14),88,28 };
