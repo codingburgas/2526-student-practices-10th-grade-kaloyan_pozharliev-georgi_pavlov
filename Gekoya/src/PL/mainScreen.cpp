@@ -1,11 +1,28 @@
 ﻿#include "mainScreen.h"
 #include "../colors.h"
+#include "../BLL/BookingService.h"
 #include <string>
 #include <cmath>
 #include <vector>
 #include <algorithm>
 #include <set>
 #include <map>
+#include <ctime>
+
+// ── Helper: returns today as "YYYY-MM-DD" ────────────────────────────────────
+static std::string GetTodayString()
+{
+    time_t now = time(nullptr);
+    struct tm t;
+#ifdef _WIN32
+    localtime_s(&t, &now);
+#else
+    localtime_r(&now, &t);
+#endif
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%04d-%02d-%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+    return std::string(buf);
+}
 
 struct Showtime { const char* time; bool available; };
 
@@ -19,7 +36,7 @@ struct Movie
     int         durationMin;
     Color       accent;
     std::vector<Showtime> shows;
-    const char* posterPath;  
+    const char* posterPath;
 };
 
 static std::vector<Movie> allMovies = {
@@ -79,9 +96,9 @@ static void UnloadMovieTextures()
 
 static void DrawPosterFitted(Texture2D tex, Rectangle dest, Color bgColor, Color accent)
 {
-    DrawRectangleRec(dest, bgColor);                  
+    DrawRectangleRec(dest, bgColor);
 
-    if (tex.width <= 1 || tex.height <= 1)   
+    if (tex.width <= 1 || tex.height <= 1)
     {
         DrawRectangleLinesEx(dest, 1, accent);
         // small play icon
@@ -623,8 +640,31 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
         if (canConfirm)
         {
             rippleActive = true; rippleTimer = 0; rippleX = mouse.x; rippleY = mouse.y;
+
+            // ── Persist every selected seat as its own booking in MongoDB ──
+            std::string today = GetTodayString();
+            std::string showtime = m.shows[selectedShow].time;
+            int savedCount = 0;
+            for (int r = 0; r < SEAT_ROWS; r++)
+                for (int s = 0; s < 2; s++)
+                    for (int c = 0; c < SEAT_COLS; c++)
+                        if (seatMap[r][s][c].selected)
+                        {
+                            int    priceCol = (s == 0) ? (SEAT_COLS - 1 - c) : c;
+                            int    price = SeatPrice(priceCol);
+                            std::string seat = SeatTypeName(priceCol);
+                            BookingService::AddBooking(
+                                sessionUser.username,
+                                m.title,
+                                showtime,
+                                seat,
+                                today,
+                                price);
+                            savedCount++;
+                        }
+
             std::string note = "BOOKING CONFIRMED: ";
-            note += m.title; note += "  "; note += m.shows[selectedShow].time;
+            note += m.title; note += "  "; note += showtime;
             note += "  " + std::to_string(selCount) + " SEAT(S)  $" + std::to_string(totalPrice);
             ShowToast(note);
             ClearSeatSelections(); selectedShow = -1;
