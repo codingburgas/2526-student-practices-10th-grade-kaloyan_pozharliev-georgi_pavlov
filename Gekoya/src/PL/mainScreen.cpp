@@ -4,6 +4,7 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <set>
 
 struct Showtime { const char* time; bool available; };
 
@@ -106,6 +107,105 @@ static bool  confirmPulseActive = false;
 static float confirmPulseTimer = 0.0f;
 
 static float cardHoverY[16] = {};
+
+// ── Seat map state ──────────────────────────────────────────────────────────
+// Layout: 8 rows × 12 seats per side (left + right), aisle in the middle
+// Seat type zones (per side, columns 0-11):
+//   cols 0-2  → SILVER  ($8)
+//   cols 3-7  → GOLD    ($14)
+//   cols 8-11 → PLATINUM($22)
+// Some seats are pre-taken (occupied).
+static const int SEAT_ROWS = 8;
+static const int SEAT_COLS = 12;   // per side
+static const int MAX_SELECTED = 10;
+
+struct SeatState
+{
+    bool occupied;   // pre-occupied (grey)
+    bool selected;   // user-selected (accent colour)
+};
+
+static SeatState seatMap[SEAT_ROWS][2][SEAT_COLS]; // [row][side 0=left,1=right][col]
+static bool      seatMapInit = false;
+
+static void InitSeatMap()
+{
+    // Reset all
+    for (int r = 0; r < SEAT_ROWS; r++)
+        for (int s = 0; s < 2; s++)
+            for (int c = 0; c < SEAT_COLS; c++)
+                seatMap[r][s][c] = { false, false };
+
+    // Scatter some pre-occupied seats (fixed pattern)
+    auto occ = [](int r, int s, int c) { seatMap[r][s][c].occupied = true; };
+    occ(0, 0, 9); occ(0, 0, 10); occ(0, 0, 11);
+    occ(0, 1, 0); occ(0, 1, 1);
+    occ(1, 0, 10); occ(1, 0, 11);
+    occ(2, 1, 9); occ(2, 1, 10);
+    occ(3, 0, 8); occ(3, 0, 9);
+    occ(4, 0, 11); occ(4, 1, 11);
+    occ(5, 0, 6); occ(5, 0, 7); occ(5, 0, 8); occ(5, 1, 6); occ(5, 1, 7);
+    occ(6, 0, 9); occ(6, 0, 10); occ(6, 1, 8); occ(6, 1, 9);
+    occ(7, 0, 10); occ(7, 0, 11); occ(7, 1, 10); occ(7, 1, 11);
+    seatMapInit = true;
+}
+
+static void ClearSeatSelections()
+{
+    for (int r = 0; r < SEAT_ROWS; r++)
+        for (int s = 0; s < 2; s++)
+            for (int c = 0; c < SEAT_COLS; c++)
+                seatMap[r][s][c].selected = false;
+}
+
+static int CountSelected()
+{
+    int n = 0;
+    for (int r = 0; r < SEAT_ROWS; r++)
+        for (int s = 0; s < 2; s++)
+            for (int c = 0; c < SEAT_COLS; c++)
+                if (seatMap[r][s][c].selected) n++;
+    return n;
+}
+
+// Returns price for a given side-column
+static int SeatPrice(int col)
+{
+    if (col >= 8) return 22; // Platinum
+    if (col >= 3) return 14; // Gold
+    return 8;                // Silver
+}
+
+static const char* SeatTypeName(int col)
+{
+    if (col >= 8) return "PLATINUM";
+    if (col >= 3) return "GOLD";
+    return "SILVER";
+}
+
+static int TotalPrice()
+{
+    int total = 0;
+    for (int r = 0; r < SEAT_ROWS; r++)
+        for (int s = 0; s < 2; s++)
+            for (int c = 0; c < SEAT_COLS; c++)
+                if (seatMap[r][s][c].selected)
+                    total += SeatPrice(c);
+    return total;
+}
+
+// Colours for seat zones
+static Color SeatZoneColor(int col, bool selected, bool hovered, Color accent)
+{
+    if (selected) return accent;
+    if (col >= 8) // Platinum
+        return hovered ? Color{ 160,80,230,220 } : Color{ 120,50,180,160 };
+    if (col >= 3) // Gold
+        return hovered ? Color{ 230,190,60,220 } : Color{ 180,140,40,160 };
+    // Silver
+    return hovered ? Color{ 170,175,200,220 } : Color{ 110,115,140,160 };
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 static Color LerpColor(Color a, Color b, float t)
 {
@@ -229,6 +329,123 @@ static void DrawMovieCard(Font font, int idx, float cx, float cy,
     }
 }
 
+// ── Draw the seat map inside the detail view ────────────────────────────────
+static void DrawSeatMap(Font font, int originX, int originY, int availableW,
+    Color accent, Vector2 mouse, bool clicked)
+{
+    if (!seatMapInit) InitSeatMap();
+
+    // Seat cell size and spacing
+    const int SW = 22;   // seat width
+    const int SH = 18;   // seat height
+    const int SGAP = 4;    // gap between seats
+    const int RGAP = 6;    // gap between rows
+    const int AISLE = 20;   // aisle width between left and right blocks
+
+    // Total width of one side block
+    int sideW = SEAT_COLS * (SW + SGAP) - SGAP;
+    int totalW = sideW * 2 + AISLE;
+
+    // Centre the map within availableW
+    int mapX = originX + (availableW - totalW) / 2;
+    int mapY = originY;
+
+    // ── Screen / stage label ──
+    int stageW = totalW;
+    DrawRectangleRounded({ (float)mapX, (float)mapY, (float)stageW, 14 }, 0.4f, 6,
+        { accent.r, accent.g, accent.b, 60 });
+    Vector2 scSz = MeasureTextEx(font, "S C R E E N", 9, 1);
+    DrawTextEx(font, "S C R E E N",
+        { (float)(mapX + stageW / 2 - scSz.x / 2), (float)(mapY + 2) },
+        9, 1, { accent.r, accent.g, accent.b, 200 });
+    mapY += 22;
+
+    // ── Draw seats ──
+    for (int r = 0; r < SEAT_ROWS; r++)
+    {
+        int rowY = mapY + r * (SH + RGAP);
+
+        // Row label (left)
+        char rowLabel[4]; snprintf(rowLabel, 4, "%d", r + 1);
+        DrawTextEx(font, rowLabel,
+            { (float)(mapX - 16), (float)(rowY + 3) }, 9, 1, TEXT_MUTED);
+
+        for (int side = 0; side < 2; side++)
+        {
+            int blockX = (side == 0) ? mapX : (mapX + sideW + AISLE);
+
+            for (int c = 0; c < SEAT_COLS; c++)
+            {
+                // Left block: col 0 is leftmost (low col index = outer = Silver)
+                // Right block: col 0 is inner (Platinum side), col 11 is outer (Silver)
+                // We mirror the right side so Platinum is still centre-aisle.
+                int priceCol = (side == 0) ? (SEAT_COLS - 1 - c) : c;
+
+                int sx = blockX + c * (SW + SGAP);
+                int sy = rowY;
+                Rectangle seatRect = { (float)sx, (float)sy, (float)SW, (float)SH };
+
+                SeatState& seat = seatMap[r][side][c];
+                bool hov = CheckCollisionPointRec(mouse, seatRect) && !seat.occupied;
+
+                if (clicked && hov)
+                {
+                    if (seat.selected)
+                    {
+                        seat.selected = false;
+                    }
+                    else if (CountSelected() < MAX_SELECTED)
+                    {
+                        seat.selected = true;
+                    }
+                }
+
+                Color seatCol;
+                if (seat.occupied)
+                    seatCol = { 55, 55, 70, 255 };
+                else
+                    seatCol = SeatZoneColor(priceCol, seat.selected, hov, accent);
+
+                DrawRectangleRounded(seatRect, 0.25f, 4, seatCol);
+
+                if (seat.selected)
+                    DrawRectangleRoundedLines(seatRect, 0.25f, 4, WHITE);
+                else if (hov)
+                    DrawRectangleRoundedLines(seatRect, 0.25f, 4, { 255,255,255,120 });
+            }
+        }
+
+        // Row label (right)
+        char rowLabel2[4]; snprintf(rowLabel2, 4, "%d", r + 1);
+        DrawTextEx(font, rowLabel2,
+            { (float)(mapX + totalW + 4), (float)(rowY + 3) }, 9, 1, TEXT_MUTED);
+    }
+
+    // ── Legend ──
+    int legY = mapY + SEAT_ROWS * (SH + RGAP) + 10;
+    struct LegItem { const char* label; Color col; int price; };
+    LegItem legend[] = {
+        { "SILVER",   {110,115,140,220}, 8  },
+        { "GOLD",     {180,140,40,220},  14 },
+        { "PLATINUM", {120,50,180,220},  22 },
+        { "TAKEN",    {55,55,70,255},    -1 },
+        { "SELECTED", accent,            -1 },
+    };
+    int legX = mapX;
+    for (auto& li : legend)
+    {
+        DrawRectangleRounded({ (float)legX, (float)legY, 14, 12 }, 0.3f, 4, li.col);
+        char lbuf[32];
+        if (li.price >= 0)
+            snprintf(lbuf, 32, "%s $%d", li.label, li.price);
+        else
+            snprintf(lbuf, 32, "%s", li.label);
+        DrawTextEx(font, lbuf, { (float)(legX + 18), (float)(legY + 1) }, 9, 1, TEXT_SECONDARY);
+        legX += (int)MeasureTextEx(font, lbuf, 9, 1).x + 28;
+    }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 static void DrawDetailView(Font font, int idx, int screenW, int screenH,
     float slideOffset, float time, float pulse,
     Vector2 mouse, bool clicked, SessionUser& sessionUser, float dt)
@@ -249,6 +466,7 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
     int leftX = panelX + 32;
     int topY = panelY + 28;
 
+    // ── Poster ──
     Color posterBg = {
         (unsigned char)(m.accent.r / 5),
         (unsigned char)(m.accent.g / 5),
@@ -278,6 +496,7 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
         { (float)(leftX + 100 - (int)rdSz.x / 2), (float)(topY + 162) }, 9, 1,
         { 180, 180, 200, 160 });
 
+    // Genre / language badges
     Vector2 gs = MeasureTextEx(font, m.genre, 11, 1);
     DrawRectangleRounded({ (float)leftX,(float)(topY + 290),gs.x + 14,20 }, 0.4f, 4,
         { m.accent.r,m.accent.g,m.accent.b,50 });
@@ -295,6 +514,7 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
     DrawTextEx(font, durBuf, { (float)leftX,(float)(topY + 344) }, 12, 1, TEXT_SECONDARY);
     DrawTextEx(font, m.releaseDate, { (float)leftX,(float)(topY + 364) }, 11, 1, TEXT_SECONDARY);
 
+    // ── Right panel ──
     int rightX = leftX + 240;
     int rightW = panelW - 280;
 
@@ -311,6 +531,7 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
         lineY += 18;
     }
 
+    // ── Showtimes ──
     int showY = topY + 140;
 
     if (jumpToShowtime)
@@ -359,53 +580,62 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
             DrawTextEx(font, "FULL", { (float)sx + 43 - fs.x / 2,(float)showY + 26 }, 9, 1, TEXT_MUTED);
         }
 
-        if (clicked && hov && avail) selectedShow = i;
+        if (clicked && hov && avail)
+        {
+            selectedShow = i;
+            // Reset seat selections when showtime changes
+            ClearSeatSelections();
+        }
     }
 
-    int seatY = showY + 60;
-    DrawTextEx(font, "SELECT SEAT TYPE", { (float)rightX,(float)seatY }, 11, 1, TEXT_SECONDARY);
-    DrawRectangle(rightX, seatY + 16, rightW - 40, 1, BORDER_NORMAL);
-    seatY += 26;
+    // ── CHOOSE YOUR SEAT (Seat Map) ──
+    int seatMapSectionY = showY + 60;
 
-    struct SeatType { const char* name; int price; Color col; };
-    static SeatType seatTypes[] = {
-        {"SILVER",  8,  {160,160,180,255}},
-        {"GOLD",    14, {220,180,50,255}},
-        {"PLATINUM",22, {180,80,255,255}},
-    };
-    static int selectedSeat = -1;
+    DrawTextEx(font, "CHOOSE YOUR SEAT", { (float)rightX,(float)seatMapSectionY }, 11, 1, TEXT_SECONDARY);
+    // Show max seats hint
+    int selCount = CountSelected();
+    char selCountBuf[48];
+    snprintf(selCountBuf, 48, "%d / %d SEATS", selCount, MAX_SELECTED);
+    Vector2 scb = MeasureTextEx(font, selCountBuf, 10, 1);
+    Color selCountColor = (selCount == MAX_SELECTED) ? Color{ 255,160,60,255 } : TEXT_SECONDARY;
+    DrawTextEx(font, selCountBuf,
+        { (float)(rightX + rightW - 40 - scb.x), (float)seatMapSectionY }, 10, 1, selCountColor);
 
-    for (int i = 0; i < 3; i++)
+    DrawRectangle(rightX, seatMapSectionY + 16, rightW - 40, 1, BORDER_NORMAL);
+    seatMapSectionY += 24;
+
+    // Draw the actual seat map
+    DrawSeatMap(font, rightX, seatMapSectionY, rightW - 40, m.accent, mouse, clicked);
+
+    // ── Price summary ──
+    // Position below seat map: 8 rows * (18+6) + legend (≈28) + screen label (22) = 242px
+    int priceSummaryY = seatMapSectionY + SEAT_ROWS * (18 + 6) + 22 + 32;
+
+    int totalPrice = TotalPrice();
+    bool hasSeatSelected = (selCount > 0);
+
+    if (hasSeatSelected)
     {
-        int stx = rightX + i * (110 + 12);
-        bool sel = (selectedSeat == i);
-        bool hov = CheckCollisionPointRec(mouse, { (float)stx,(float)seatY,108,52 });
-
-        Color stBg = sel ? Color{ seatTypes[i].col.r,seatTypes[i].col.g,seatTypes[i].col.b,40 }
-        : hov ? Color{ seatTypes[i].col.r,seatTypes[i].col.g,seatTypes[i].col.b,20 } : BG_INPUT;
-        Color stBdr = sel ? seatTypes[i].col : (hov ? BORDER_FOCUS : BORDER_NORMAL);
-
-        DrawRectangleRounded({ (float)stx,(float)seatY,108,52 }, 0.15f, 6, stBg);
-        DrawRectangleRoundedLines({ (float)stx,(float)seatY,108,52 }, 0.15f, 6, stBdr);
-
-        Vector2 ns = MeasureTextEx(font, seatTypes[i].name, 11, 1);
-        DrawTextEx(font, seatTypes[i].name,
-            { (float)stx + 54 - ns.x / 2,(float)seatY + 8 }, 11, 1,
-            sel ? seatTypes[i].col : TEXT_PRIMARY);
-
-        char priceBuf[16]; snprintf(priceBuf, 16, "$%d", seatTypes[i].price);
-        Vector2 ps = MeasureTextEx(font, priceBuf, 13, 1);
+        char priceBuf[64];
+        snprintf(priceBuf, 64, "TOTAL:  $%d  (%d seat%s)", totalPrice, selCount, selCount > 1 ? "s" : "");
+        Vector2 pbSz = MeasureTextEx(font, priceBuf, 13, 1);
+        float priceBoxX = (float)rightX;
+        float priceBoxW = (float)(rightW - 40);
+        DrawRectangleRounded({ priceBoxX, (float)priceSummaryY, priceBoxW, 36 }, 0.2f, 6,
+            { m.accent.r, m.accent.g, m.accent.b, 30 });
+        DrawRectangleRoundedLines({ priceBoxX, (float)priceSummaryY, priceBoxW, 36 }, 0.2f, 6,
+            { m.accent.r, m.accent.g, m.accent.b, 100 });
         DrawTextEx(font, priceBuf,
-            { (float)stx + 54 - ps.x / 2,(float)seatY + 26 }, 13, 1,
-            sel ? seatTypes[i].col : TEXT_SECONDARY);
-
-        if (clicked && hov) selectedSeat = i;
+            { priceBoxX + priceBoxW / 2 - pbSz.x / 2, (float)priceSummaryY + 10 },
+            13, 1, { 255, 220, 100, 255 });
+        priceSummaryY += 44;
     }
 
-    int btnY = seatY + 72;
+    // ── Confirm button ──
+    int btnY = priceSummaryY + 4;
     Rectangle confirmBtn = { (float)rightX,(float)btnY,(float)(rightW - 40),48 };
     bool hoverConfirm = CheckCollisionPointRec(mouse, confirmBtn);
-    bool canConfirm = (selectedShow >= 0 && selectedSeat >= 0);
+    bool canConfirm = (selectedShow >= 0 && hasSeatSelected);
 
     if (confirmPulseActive)
     {
@@ -428,7 +658,7 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
             { 255,255,255,(unsigned char)((1.0f - rp) * 50.0f) });
     }
 
-    const char* confirmLabel = canConfirm ? "CONFIRM BOOKING" : "SELECT SHOWTIME AND SEAT TYPE";
+    const char* confirmLabel = canConfirm ? "CONFIRM BOOKING" : "SELECT SHOWTIME AND SEATS";
     Vector2 cts = MeasureTextEx(font, confirmLabel, 13, 1);
     DrawTextEx(font, confirmLabel,
         { confirmBtn.x + confirmBtn.width / 2 - cts.x / 2, confirmBtn.y + confirmBtn.height / 2 - cts.y / 2 },
@@ -444,9 +674,10 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
             note += "  ";
             note += m.shows[selectedShow].time;
             note += "  ";
-            note += seatTypes[selectedSeat].name;
+            note += std::to_string(selCount) + " SEAT(S)  $" + std::to_string(totalPrice);
             ShowToast(note);
-            selectedShow = -1; selectedSeat = -1;
+            ClearSeatSelections();
+            selectedShow = -1;
         }
         else
         {
@@ -457,6 +688,7 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
         }
     }
 
+    // ── Back button ──
     Rectangle backBtn = { (float)(panelX + 12),(float)(panelY + 12),110,34 };
     bool hoverBack = CheckCollisionPointRec(mouse, backBtn);
     DrawRectangleRounded(backBtn, 0.3f, 6,
@@ -472,9 +704,9 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
     {
         selectedMovie = -1;
         selectedShow = -1;
-        selectedSeat = -1;
         jumpToShowtime = false;
         confirmPulseActive = false;
+        ClearSeatSelections();
     }
 }
 
@@ -526,14 +758,14 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
 
     std::vector<int> filtered = FilteredIndices();
 
-    int totalCardsW = (int)filtered.size() * (cardW + cardSpacing);
+    int   totalCardsW = (int)filtered.size() * (cardW + cardSpacing);
     float maxScroll = (float)std::max(0, totalCardsW - (screenW - cardsStartX * 2));
 
     float wheel = GetMouseWheelMove();
     if (selectedMovie < 0 && wheel != 0)
     {
         cardScrollTarget -= wheel * 60.0f;
-        if (cardScrollTarget < 0) cardScrollTarget = 0;
+        if (cardScrollTarget < 0)         cardScrollTarget = 0;
         if (cardScrollTarget > maxScroll) cardScrollTarget = maxScroll;
     }
 
@@ -554,6 +786,8 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
                     selectedMovie = filtered[fi];
                     entranceTimer = 0;
                     jumpToShowtime = false;
+                    // Reset seat map for the new movie
+                    InitSeatMap();
                 }
             }
         }
@@ -604,6 +838,7 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
     for (int sy = 0; sy < screenH; sy += 4)
         DrawRectangle(0, sy, screenW, 1, { 0, 0, 0, 12 });
 
+    // ── Nav bar (first pass) ──
     DrawRectangle(0, 0, screenW, navH, { 10,12,28,220 });
     DrawRectangle(0, navH - 1, screenW, 1, BORDER_NORMAL);
     DrawTextEx(font, "Gekoya", { 32,(float)(navH / 2) - 11 }, 22, 1.5f,
@@ -650,8 +885,7 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
         { (float)(screenW - 210),(float)(navH / 2 - 7) }, 13, 1,
         { TEXT_PRIMARY.r,TEXT_PRIMARY.g,TEXT_PRIMARY.b,PA });
 
-    Rectangle logoutBtn = { (float)(screenW - 105),(float)(navH / 2 - 14),88,28 };
-
+    // ── Nav bar (second pass — redraw on top) ──
     DrawRectangle(0, 0, screenW, navH, { 10,12,28,220 });
     DrawRectangle(0, navH - 1, screenW, 1, BORDER_NORMAL);
     DrawTextEx(font, "Gekoya", { 32,(float)(navH / 2) - 11 }, 22, 1.5f,
@@ -669,7 +903,8 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
             (int)MeasureTextEx(font, navItems[i], 12, 1).x, 2, ACCENT);
     }
 
-    logoutBtn = { (float)(screenW - 105),(float)(navH / 2 - 14),88,28 };
+    // ── Logout button ──
+    Rectangle logoutBtn = { (float)(screenW - 105),(float)(navH / 2 - 14),88,28 };
     bool hoverLogout = CheckCollisionPointRec(mouse, logoutBtn);
     DrawRectangleRounded(logoutBtn, 0.3f, 6, hoverLogout ? Color{ 180,50,50,220 } : Color{ 80,30,30,180 });
     DrawRectangleRoundedLines(logoutBtn, 0.3f, 6, hoverLogout ? Color{ 220,80,80,255 } : Color{ 140,50,50,200 });
@@ -690,12 +925,15 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
         cardScrollTarget = 0;
         jumpToShowtime = false;
         confirmPulseActive = false;
+        seatMapInit = false;
+        ClearSeatSelections();
         sessionUser.username = "";
         sessionUser.email = "";
         EndDrawing();
         return AUTH;
     }
 
+    // ── Genre filter bar ──
     for (int i = 0; i < GENRE_COUNT; i++)
     {
         float fx = 32.0f + i * 110.0f;
@@ -715,6 +953,7 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
     Vector2 cbSz = MeasureTextEx(font, countBuf, 11, 1);
     DrawTextEx(font, countBuf, { (float)(screenW - cbSz.x - 32),(float)(filterBarY + 8) }, 11, 1, TEXT_SECONDARY);
 
+    // ── Movie card list ──
     if (selectedMovie < 0 || detailSlide > screenW * 0.05f)
     {
         BeginScissorMode(0, listY - 4, screenW, screenH - listY - 34);
@@ -751,12 +990,14 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
         }
     }
 
+    // ── Detail / booking view ──
     if (selectedMovie >= 0 || detailSlide < screenW * 0.95f)
     {
         DrawDetailView(font, selectedMovie >= 0 ? selectedMovie : 0,
             screenW, screenH, detailSlide, time, pulse, mouse, clicked, sessionUser, dt);
     }
 
+    // ── Status bar ──
     int barY = screenH - 34;
     DrawRectangle(0, barY, screenW, 34, { 10,12,28,210 });
     DrawRectangle(0, barY, screenW, 1, BORDER_NORMAL);
@@ -778,6 +1019,7 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
     DrawCircle(screenW - 120, barY + 17, 5, { 80,220,120,dotA });
     DrawTextEx(font, "LIVE", { (float)(screenW - 110),(float)(barY + 10) }, 11, 1, { 80,220,120,255 });
 
+    // ── Toast ──
     if (toastTimer > 0.0f)
     {
         float fadeIn = std::min(1.0f, (TOAST_DURATION - toastTimer) / 0.2f);
