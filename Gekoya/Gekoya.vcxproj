@@ -114,16 +114,10 @@
       <AdditionalDependencies>mongocxx-v_noabi-rhi-md.lib;bsoncxx-v_noabi-rhi-md.lib;mongoc2.dll.lib;bson2.dll.lib;raylib.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy C:\vcpkg\installed\x64-windows\bin\mongocxx-v_noabi-rhi-md.dll "$(OutDir)"
-copy C:\vcpkg\installed\x64-windows\bin\bsoncxx-v_noabi-rhi-md.dll "$(OutDir)"
-copy C:\vcpkg\installed\x64-windows\bin\mongoc2.dll "$(OutDir)"
-copy C:\vcpkg\installed\x64-windows\bin\bson2.dll "$(OutDir)"
-copy C:\vcpkg\installed\x64-windows\bin\raylib.dll "$(OutDir)"
-copy C:\vcpkg\installed\x64-windows\bin\cares.dll "$(OutDir)"
-copy C:\vcpkg\installed\x64-windows\bin\libcrypto-3-x64.dll "$(OutDir)"
-copy C:\vcpkg\installed\x64-windows\bin\libssl-3-x64.dll "$(OutDir)"
-copy C:\vcpkg\installed\x64-windows\bin\zlib1.dll "$(OutDir)"
-copy C:\vcpkg\installed\x64-windows\bin\utf8proc.dll "$(OutDir)"</Command>
+      <Command>xcopy /y "C:\vcpkg\installed\x64-windows\bin\mongoc-1.0.dll" "$(OutDir)"
+xcopy /y "C:\vcpkg\installed\x64-windows\bin\bson-1.0.dll" "$(OutDir)"
+xcopy /y "C:\vcpkg\installed\x64-windows\bin\mongocxx-v_noabi-rhi-md.dll" "$(OutDir)"
+xcopy /y "C:\vcpkg\installed\x64-windows\bin\bsoncxx-v_noabi-rhi-md.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

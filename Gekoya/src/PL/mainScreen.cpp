@@ -43,6 +43,8 @@ struct MainParticle { float x, y, vx, vy, r, alpha; };
 static MainParticle particles[PARTICLE_COUNT];
 static bool particlesInit = false;
 
+static AppState prof_pendingNav = MAIN;
+
 static void InitParticles(int w, int h)
 {
     for (int i = 0; i < PARTICLE_COUNT; i++)
@@ -512,14 +514,8 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
         {
             activeNav = i;
             entranceTimer = 0.0f;
-            switch (i)
-            {
-            case 0: return MAIN;
-            case 1: return CINEMAS;
-            case 2: return TICKETS;
-            case 3: return PROFILE;
-            default: break;
-            }
+            AppState targets[] = { MAIN, CINEMAS, TICKETS, PROFILE };
+            prof_pendingNav = targets[i];
         }
     }
 
@@ -799,5 +795,7 @@ AppState mainScreen(Font font, SessionUser& sessionUser)
     }
 
     EndDrawing();
-    return MAIN;
+    AppState ret = prof_pendingNav;
+    prof_pendingNav = MAIN;
+    return ret;
 }

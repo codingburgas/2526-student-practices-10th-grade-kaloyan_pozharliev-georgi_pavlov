@@ -3,6 +3,7 @@
 #include "PL/authScreen.h"
 #include "PL/registerScreen.h"
 #include "PL/mainScreen.h"
+#include "PL/profileScreen.h"
 #include "DAL/Database.h"
 
 App::App(Vector2 setScreen, std::string setName)
@@ -38,6 +39,9 @@ void App::Run()
             break;
         case MAIN:
             appState = mainScreen(mainFont, sessionUser);
+            break;
+        case PROFILE:
+            appState = profileScreen(mainFont, sessionUser);
             break;
         }
     }

@@ -1,5 +1,5 @@
 #pragma once
-#include <raylib.h>
 #include "../utils.h"
+#include "raylib.h"
 
 AppState profileScreen(Font font, SessionUser& sessionUser);
