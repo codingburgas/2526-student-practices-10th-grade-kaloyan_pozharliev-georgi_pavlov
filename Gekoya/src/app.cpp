@@ -4,6 +4,7 @@
 #include "PL/registerScreen.h"
 #include "PL/mainScreen.h"
 #include "PL/profileScreen.h"
+#include "PL/cinemasScreen.h"
 #include "DAL/Database.h"
 
 App::App(Vector2 setScreen, std::string setName)
@@ -43,6 +44,9 @@ void App::Run()
         case PROFILE:
             appState = profileScreen(mainFont, sessionUser);
             break;
+        case CINEMAS:
+            appState = cinemasScreen(mainFont, sessionUser);
+			break;
         }
     }
 }
