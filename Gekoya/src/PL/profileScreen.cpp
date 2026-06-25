@@ -1,21 +1,25 @@
 ﻿#include "profileScreen.h"
 #include <iostream>
 #include "../colors.h"
+#include "../DAL/userRepository.h"
+#include "../DAL/BookingRepository.h"
+#include "../BLL/bookingService.h"
 #include <string>
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <map>
 
-// ─── Nav ────────────────────────────────────────────────────────────────────
+// Nav
 static const char* prof_navItems[] = { "MOVIES", "CINEMAS", "MY TICKETS", "PROFILE" };
 static int         prof_activeNav = 3;
 
-// ─── Entrance animation ──────────────────────────────────────────────────────
+// Entrance animation
 static float prof_entranceTimer = 0.0f;
 static const float PROF_ENTER_DURATION = 0.55f;
 static float Prof_EaseOutCubic(float t) { float inv = 1.0f - t; return 1.0f - inv * inv * inv; }
 
-// ─── Particles ───────────────────────────────────────────────────────────────
+// Particles
 static const int PROF_PARTICLE_COUNT = 55;
 struct ProfParticle { float x, y, vx, vy, r, alpha; };
 static ProfParticle prof_particles[PROF_PARTICLE_COUNT];
@@ -35,7 +39,6 @@ static void Prof_InitParticles(int w, int h)
     prof_particlesInit = true;
 }
 
-
 static void Prof_UpdateParticles(float dt, int w, int h)
 {
     for (int i = 0; i < PROF_PARTICLE_COUNT; i++)
@@ -48,25 +51,27 @@ static void Prof_UpdateParticles(float dt, int w, int h)
     }
 }
 
-// ─── Toast ───────────────────────────────────────────────────────────────────
+// Toast
 static std::string prof_toastMsg = "";
 static float       prof_toastTimer = 0.0f;
+static bool        prof_toastIsError = false;
 static const float PROF_TOAST_DURATION = 2.8f;
 
-static void Prof_ShowToast(const std::string& msg)
+static void Prof_ShowToast(const std::string& msg, bool isError = false)
 {
     prof_toastMsg = msg;
     prof_toastTimer = PROF_TOAST_DURATION;
+    prof_toastIsError = isError;
 }
 
-// ─── Ripple ───────────────────────────────────────────────────────────────────
+// Ripple
 static bool  prof_rippleActive = false;
 static float prof_rippleTimer = 0.0f;
 static float prof_rippleX = 0, prof_rippleY = 0;
 static const float PROF_RIPPLE_DURATION = 0.5f;
 static const float PROF_RIPPLE_MAX_R = 140.0f;
 
-// ─── Color helpers ────────────────────────────────────────────────────────────
+// Color helpers
 static Color Prof_LerpColor(Color a, Color b, float t)
 {
     if (t < 0) t = 0; if (t > 1) t = 1;
@@ -77,7 +82,7 @@ static Color Prof_LerpColor(Color a, Color b, float t)
         (unsigned char)(a.a + (b.a - a.a) * t) };
 }
 
-// ─── Edit-field state ─────────────────────────────────────────────────────────
+// Edit-field state
 static std::string prof_editEmail = "";
 static std::string prof_editUsername = "";
 static bool        prof_editMode = false;
@@ -90,8 +95,8 @@ static float prof_usernameBorderLerp = 0.0f;
 static float prof_emailGlowLerp = 0.0f;
 static float prof_usernameGlowLerp = 0.0f;
 
-// ─── Password change state ────────────────────────────────────────────────────
-static bool        prof_pwSection = false;   // password section expanded
+// Password change state
+static bool        prof_pwSection = false;
 static std::string prof_pwCurrent = "";
 static std::string prof_pwNew = "";
 static std::string prof_pwConfirm = "";
@@ -102,28 +107,78 @@ static bool        prof_showCurr = false;
 static bool        prof_showNew = false;
 static bool        prof_showConf = false;
 
-static float prof_pwSectionHeight = 0.0f;    // animated expand
-static const float PROF_PW_EXPANDED = 200.0f;
+// Enough height for 3 fields (each ~48+34=82) + button (48) + labels (18 each) + padding
+static float prof_pwSectionHeight = 0.0f;
+static const float PROF_PW_EXPANDED = 340.0f;
 
-// ─── Stats data ───────────────────────────────────────────────────────────────
-struct ProfStat { const char* label; const char* value; Color accent; };
-static ProfStat prof_stats[] = {
-    { "FILMS BOOKED",   "12",    {80,  130, 255, 255} },
-    { "HOURS WATCHED",  "34.5h", {255, 140,  60, 255} },
-    { "FAVOURITE GENRE","SCI-FI",{180,  80, 255, 255} },
-    { "MEMBER SINCE",   "2024",  { 80, 220, 160, 255} },
+// Live DB data
+static bool                  prof_dataLoaded = false;
+static std::vector<Booking>  prof_bookings;
+
+// Computed stats
+static int         prof_totalBookings = 0;
+static float       prof_totalHours = 0.0f;
+static std::string prof_favGenre = "—";
+static std::string prof_memberSince = "—";
+
+// Genre mapping (movie title substring → genre)
+static const std::pair<const char*, const char*> GENRE_MAP[] = {
+    {"DUNE",          "SCI-FI"},
+    {"INTERSTELLAR",  "SCI-FI"},
+    {"OPPENHEIMER",   "DRAMA"},
+    {"BATMAN",        "ACTION"},
+    {"PAST LIVES",    "ROMANCE"},
+    {"POOR THINGS",   "DRAMA"},
+    {"KILLER",        "WESTERN"},
 };
 
-// ─── Recent activity ──────────────────────────────────────────────────────────
-struct ProfActivity { const char* title; const char* date; const char* seat; Color accent; };
-static ProfActivity prof_activity[] = {
-    { "DUNE: PART TWO",  "Mar 15, 2025", "GOLD   20:15",  {80,  130, 255, 255} },
-    { "OPPENHEIMER",     "Feb 28, 2025", "PLATINUM 18:00",{255, 140,  60, 255} },
-    { "THE BATMAN",      "Jan 10, 2025", "SILVER  13:00",  {60,  180, 255, 255} },
-    { "INTERSTELLAR",    "Dec 05, 2024", "GOLD   14:30",  {100, 200, 255, 255} },
-};
+static std::string Prof_GuessGenre(const std::string& title)
+{
+    std::string up = title;
+    std::transform(up.begin(), up.end(), up.begin(), ::toupper);
+    for (auto& kv : GENRE_MAP)
+        if (up.find(kv.first) != std::string::npos)
+            return kv.second;
+    return "MIXED";
+}
 
-// ─── Error / validation ───────────────────────────────────────────────────────
+// Average movie runtime in hours used for "hours watched" estimate
+static const float AVG_RUNTIME_H = 2.1f;
+
+static void Prof_LoadData(const std::string& username)
+{
+    prof_bookings = BookingRepository::GetBookingsByUser(username);
+    prof_totalBookings = (int)prof_bookings.size();
+    prof_totalHours = prof_totalBookings * AVG_RUNTIME_H;
+
+    // Favourite genre: most common among booked movies
+    std::map<std::string, int> genreCount;
+    for (auto& b : prof_bookings)
+        genreCount[Prof_GuessGenre(b.movieTitle)]++;
+    if (!genreCount.empty())
+    {
+        auto it = std::max_element(genreCount.begin(), genreCount.end(),
+            [](auto& a, auto& b) { return a.second < b.second; });
+        prof_favGenre = it->first;
+    }
+    else
+        prof_favGenre = "—";
+
+    // Member since: extract year from earliest booking date (YYYY-MM-DD or similar)
+    if (!prof_bookings.empty())
+    {
+        std::string earliest = prof_bookings[0].bookingDate;
+        for (auto& b : prof_bookings)
+            if (b.bookingDate < earliest) earliest = b.bookingDate;
+        prof_memberSince = (earliest.size() >= 4) ? earliest.substr(0, 4) : "—";
+    }
+    else
+        prof_memberSince = "—";
+
+    prof_dataLoaded = true;
+}
+
+// Error / validation
 static bool        prof_showError = false;
 static std::string prof_errorMsg = "";
 static float       prof_errorAlpha = 0.0f;
@@ -135,22 +190,22 @@ static void Prof_TriggerError(const std::string& msg)
     prof_errorAlpha = 0.0f;
 }
 
-// ─── Avatar pulse ─────────────────────────────────────────────────────────────
+// Avatar pulse
 static float prof_avatarPulse = 0.0f;
 
-// ─── Shake ────────────────────────────────────────────────────────────────────
+// Shake
 static float prof_shakeTimer = 0.0f;
 static float prof_shakeOffsetX = 0.0f;
 static const float PROF_SHAKE_DURATION = 0.45f;
 static const float PROF_SHAKE_MAGNITUDE = 6.0f;
 
-// ─── Helper: draw a masked password string ────────────────────────────────────
+// Helper: masked string
 static std::string Prof_Mask(const std::string& s)
 {
     std::string m; for (auto& c : s) { (void)c; m += '*'; } return m;
 }
 
-// ─── Helper: draw eye toggle icon ─────────────────────────────────────────────
+// Helper: eye icon
 static void Prof_DrawEye(bool visible, Rectangle btn, Color col, unsigned char PA)
 {
     Color c = { col.r, col.g, col.b, PA };
@@ -164,13 +219,12 @@ static void Prof_DrawEye(bool visible, Rectangle btn, Color col, unsigned char P
     }
 }
 
-// ─── Helper: draw an input field row ──────────────────────────────────────────
+// Helper: input field row
 static void Prof_DrawField(Font font, const char* label,
     const std::string& value, bool active, bool masked,
     Rectangle field, float borderLerp, float glowLerp,
     unsigned char PA, float time)
 {
-    // Glow
     if (glowLerp > 0.01f)
     {
         unsigned char ga = (unsigned char)(glowLerp * 38.0f * (PA / 255.0f));
@@ -182,7 +236,6 @@ static void Prof_DrawField(Font font, const char* label,
     Color border = Prof_LerpColor(BORDER_NORMAL, BORDER_FOCUS, borderLerp);
     border.a = PA;
 
-    // Label
     DrawTextEx(font, label, { field.x, field.y - 18 }, 11, 1,
         { TEXT_SECONDARY.r, TEXT_SECONDARY.g, TEXT_SECONDARY.b, PA });
 
@@ -200,7 +253,6 @@ static void Prof_DrawField(Font font, const char* label,
         DrawTextEx(font, shown.c_str(), { field.x + 14, field.y + 15 }, 13, 1,
             { TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b, PA });
 
-    // Cursor
     if (active && ((int)(time * 2)) % 2 == 0)
     {
         float cx = field.x + 14 + MeasureTextEx(font, shown.c_str(), 13, 1).x + 2;
@@ -209,7 +261,16 @@ static void Prof_DrawField(Font font, const char* label,
     }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
+// Helper: stat cell
+static void Prof_DrawStat(Font font, const char* label, const std::string& value,
+    Color accent, float sx, float sy, unsigned char PA, float panelAlpha)
+{
+    DrawTextEx(font, value.c_str(), { sx, sy + 4 }, 15, 1,
+        { accent.r, accent.g, accent.b, PA });
+    DrawTextEx(font, label, { sx, sy + 24 }, 9, 1,
+        { TEXT_SECONDARY.r, TEXT_SECONDARY.g, TEXT_SECONDARY.b, (unsigned char)(160 * panelAlpha) });
+}
+
 AppState profileScreen(Font font, SessionUser& sessionUser)
 {
     float dt = GetFrameTime();
@@ -220,6 +281,16 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
 
     if (!prof_particlesInit) Prof_InitParticles(screenW, screenH);
 
+    // Load live data from MongoDB on first frame
+    if (!prof_dataLoaded && !sessionUser.username.empty())
+    {
+        // Also fetch email from DB in case session doesn't have it
+        if (sessionUser.email.empty())
+            sessionUser.email = UserRepository::GetUserEmail(sessionUser.username);
+
+        Prof_LoadData(sessionUser.username);
+    }
+
     // Entrance
     if (prof_entranceTimer < PROF_ENTER_DURATION) prof_entranceTimer += dt;
     float enterT = Prof_EaseOutCubic(prof_entranceTimer / PROF_ENTER_DURATION);
@@ -228,7 +299,6 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
 
     Prof_UpdateParticles(dt, screenW, screenH);
 
-    // Toast / ripple
     if (prof_toastTimer > 0) prof_toastTimer -= dt;
     if (prof_rippleActive)
     {
@@ -236,10 +306,8 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
         if (prof_rippleTimer >= PROF_RIPPLE_DURATION) prof_rippleActive = false;
     }
 
-    // Error fade
     prof_errorAlpha += ((prof_showError ? 1.0f : 0.0f) - prof_errorAlpha) * dt * 12.0f;
 
-    // Shake
     if (prof_shakeTimer > 0.0f)
     {
         prof_shakeTimer -= dt;
@@ -249,20 +317,16 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
     }
     else prof_shakeOffsetX = 0.0f;
 
-    // Avatar pulse
     prof_avatarPulse += dt;
 
-    // Password section expand/collapse
     float pwTarget = prof_pwSection ? PROF_PW_EXPANDED : 0.0f;
     prof_pwSectionHeight += (pwTarget - prof_pwSectionHeight) * dt * 14.0f;
 
-    // Border lerp
     prof_emailBorderLerp += ((prof_emailActive ? 1.0f : 0.0f) - prof_emailBorderLerp) * dt * 14.0f;
     prof_usernameBorderLerp += ((prof_usernameActive ? 1.0f : 0.0f) - prof_usernameBorderLerp) * dt * 14.0f;
     prof_emailGlowLerp += ((prof_emailActive ? 1.0f : 0.0f) - prof_emailGlowLerp) * dt * 10.0f;
     prof_usernameGlowLerp += ((prof_usernameActive ? 1.0f : 0.0f) - prof_usernameGlowLerp) * dt * 10.0f;
 
-    // Init edit buffers from session when entering edit mode
     if (prof_editMode && prof_editEmail.empty() && prof_editUsername.empty())
     {
         prof_editEmail = sessionUser.email;
@@ -272,7 +336,7 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
     Vector2 mouse = GetMousePosition();
     bool    clicked = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 
-    // ── Keyboard input ───────────────────────────────────────────────────────
+    // Keyboard input
     if (prof_editMode)
     {
         if (IsKeyPressed(KEY_TAB))
@@ -312,12 +376,8 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  LAYOUT CONSTANTS
-    // ─────────────────────────────────────────────────────────────────────────
     int navH = 64;
 
-    // ── Nav click ────────────────────────────────────────────────────────────
     for (int i = 0; i < 4; i++)
     {
         float navX = 200.0f + i * 150.0f;
@@ -337,90 +397,77 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  CONTENT LAYOUT
-    // ─────────────────────────────────────────────────────────────────────────
     int contentY = navH + 18;
-    int contentH = screenH - navH - 34 - 18;  // 34 = status bar
+    int contentH = screenH - navH - 34 - 18;
     int margin = 36;
 
-    // Left column  ─ avatar + stats + activity
     int leftW = 310;
     int leftX = margin;
 
-    // Right column ─ profile form
     int rightX = leftX + leftW + 24;
     int rightW = screenW - rightX - margin;
 
-    // ─ Avatar card ──────────────────────────────────────────────────────────
+    // Avatar card
     int avatarCardH = 180;
     Rectangle avatarCard = { (float)leftX, (float)contentY, (float)leftW, (float)avatarCardH };
 
-    // ─ Stats card ───────────────────────────────────────────────────────────
+    // Stats card
     int statsCardY = contentY + avatarCardH + 14;
-    int statsCardH = 130;
+    int statsCardH = 148;
     Rectangle statsCard = { (float)leftX, (float)statsCardY, (float)leftW, (float)statsCardH };
 
-    // ─ Activity card ─────────────────────────────────────────────────────────
+    // Activity card
     int actCardY = statsCardY + statsCardH + 14;
     int actCardH = contentY + contentH - actCardY;
     Rectangle actCard = { (float)leftX, (float)actCardY, (float)leftW, (float)actCardH };
 
-    // ─ Profile form card ─────────────────────────────────────────────────────
-    int formCardH = contentH;
+    // Form card
+    int   formCardH = contentH;
     float formCardX = (float)(rightX + prof_shakeOffsetX);
     Rectangle formCard = { formCardX, (float)contentY, (float)rightW, (float)formCardH };
 
-    // Field geometry (inside form card)
     int fPad = 32;
     int fW = rightW - fPad * 2;
     int fH = 48;
     int fX = (int)formCardX + fPad;
 
-    // Row Y positions inside form card
     int rowBase = contentY + 56;
     int userFieldY = rowBase;
     int emailFieldY = userFieldY + fH + 38;
     int saveBtnY = emailFieldY + fH + 28;
     int dividerY = saveBtnY + fH + 22;
-
-    // Password section toggle
     int pwToggleY = dividerY + 12;
-    int pwBaseY = pwToggleY + 36;  // fields start here if expanded
+    int pwBaseY = pwToggleY + 36;
 
     Rectangle usernameField = { (float)fX, (float)userFieldY,  (float)fW, (float)fH };
     Rectangle emailField = { (float)fX, (float)emailFieldY, (float)fW, (float)fH };
     Rectangle saveBtn = { (float)fX, (float)saveBtnY,    (float)fW, (float)fH };
 
-    // Password field rects (rendered only when expanded)
-    Rectangle pwCurrField = { (float)fX, (float)(pwBaseY + 26),             (float)fW, (float)fH };
-    Rectangle pwNewField = { (float)fX, (float)(pwBaseY + 26 + fH + 34),   (float)fW, (float)fH };
-    Rectangle pwConfField = { (float)fX, (float)(pwBaseY + 26 + (fH + 34) * 2), (float)fW, (float)fH };
-    Rectangle pwUpdateBtn = { (float)fX, (float)(pwBaseY + 26 + (fH + 34) * 3 + 8), (float)fW, (float)fH };
+    // Password fields – each row is: 18px label + 48px field = 66px; add 16px gap between rows
+    int pwRowH = fH + 34;   // 82px per row (label 18 + field 48 + gap 16)
+    Rectangle pwCurrField = { (float)fX, (float)(pwBaseY + 26),               (float)fW, (float)fH };
+    Rectangle pwNewField = { (float)fX, (float)(pwBaseY + 26 + pwRowH),      (float)fW, (float)fH };
+    Rectangle pwConfField = { (float)fX, (float)(pwBaseY + 26 + pwRowH * 2),  (float)fW, (float)fH };
+    Rectangle pwUpdateBtn = { (float)fX, (float)(pwBaseY + 26 + pwRowH * 3 + 10), (float)fW, (float)fH };
 
-    // Eye buttons for password fields
     Rectangle eyeCurr = { pwCurrField.x + pwCurrField.width - 38, pwCurrField.y + 13, 22, 22 };
     Rectangle eyeNew = { pwNewField.x + pwNewField.width - 38, pwNewField.y + 13, 22, 22 };
     Rectangle eyeConf = { pwConfField.x + pwConfField.width - 38, pwConfField.y + 13, 22, 22 };
 
-    // Password toggle button
     Rectangle pwToggleBtn = { (float)fX, (float)pwToggleY, (float)fW, 30 };
 
-    // ── Logout button ─────────────────────────────────────────────────────────
     Rectangle logoutBtn = { (float)(screenW - 105), (float)(navH / 2 - 14), 88, 28 };
     bool hoverLogout = CheckCollisionPointRec(mouse, logoutBtn);
 
-    // ── Click handling ────────────────────────────────────────────────────────
+    // Click handling
     if (clicked)
     {
-        // Field focus (only when in edit mode)
         if (prof_editMode)
         {
             prof_usernameActive = CheckCollisionPointRec(mouse, usernameField);
             prof_emailActive = CheckCollisionPointRec(mouse, emailField);
         }
 
-        // Password field focus
         if (prof_pwSection && prof_pwSectionHeight > 10.0f)
         {
             prof_pwCurrActive = CheckCollisionPointRec(mouse, pwCurrField);
@@ -432,12 +479,11 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
             if (CheckCollisionPointRec(mouse, eyeConf)) prof_showConf = !prof_showConf;
         }
 
-        // Edit / save toggle
+        // Save / Edit
         if (CheckCollisionPointRec(mouse, saveBtn))
         {
             if (prof_editMode)
             {
-                // Validate
                 if (prof_editUsername.empty() || prof_editEmail.empty())
                 {
                     Prof_TriggerError("ERROR: ALL FIELDS REQUIRED");
@@ -445,7 +491,9 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
                 }
                 else
                 {
-                    sessionUser.username = prof_editUsername;
+                    // Persist email to MongoDB (username is immutable)
+                    bool ok = UserRepository::UpdateUser(sessionUser.username,
+                        prof_editEmail, "");
                     sessionUser.email = prof_editEmail;
                     prof_editMode = false;
                     prof_usernameActive = false;
@@ -455,7 +503,8 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
                     prof_rippleTimer = 0.0f;
                     prof_rippleX = mouse.x;
                     prof_rippleY = mouse.y;
-                    Prof_ShowToast("PROFILE UPDATED SUCCESSFULLY");
+                    Prof_ShowToast(ok ? "PROFILE UPDATED IN DATABASE"
+                        : "SAVED LOCALLY (DB OFFLINE)", !ok);
                 }
             }
             else
@@ -477,7 +526,7 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
             prof_pwConfActive = false;
         }
 
-        // Update password button
+        // Update password
         if (prof_pwSection && prof_pwSectionHeight > 10.0f &&
             CheckCollisionPointRec(mouse, pwUpdateBtn))
         {
@@ -498,10 +547,25 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
             }
             else
             {
-                prof_pwCurrent = ""; prof_pwNew = ""; prof_pwConfirm = "";
-                prof_pwSection = false;
-                prof_showError = false;
-                Prof_ShowToast("PASSWORD UPDATED SUCCESSFULLY");
+                // Validate current password then persist new one
+                bool valid = UserRepository::ValidateUser(sessionUser.username, prof_pwCurrent);
+                if (!valid)
+                {
+                    Prof_TriggerError("ERROR: CURRENT PASSWORD IS INCORRECT");
+                    prof_shakeTimer = PROF_SHAKE_DURATION;
+                }
+                else
+                {
+                    bool ok = UserRepository::UpdateUser(sessionUser.username,
+                        "", prof_pwNew);
+                    prof_pwCurrent = "";
+                    prof_pwNew = "";
+                    prof_pwConfirm = "";
+                    prof_pwSection = false;
+                    prof_showError = false;
+                    Prof_ShowToast(ok ? "PASSWORD UPDATED IN DATABASE"
+                        : "SAVED LOCALLY (DB OFFLINE)", !ok);
+                }
             }
         }
 
@@ -518,19 +582,18 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
             prof_showError = false;
             prof_entranceTimer = 0.0f;
             prof_particlesInit = false;
+            prof_dataLoaded = false;
+            prof_bookings.clear();
             sessionUser.username = "";
             sessionUser.email = "";
             return AUTH;
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  DRAWING
-    // ─────────────────────────────────────────────────────────────────────────
     BeginDrawing();
     ClearBackground(BG_DARK);
 
-    // ── Particles ─────────────────────────────────────────────────────────────
+    // Particles
     for (int i = 0; i < PROF_PARTICLE_COUNT; i++)
     {
         unsigned char pa = (unsigned char)(prof_particles[i].alpha * panelAlpha * 255.0f);
@@ -538,7 +601,7 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
             prof_particles[i].r, { 100, 140, 255, pa });
     }
 
-    // ── Ambient glow blobs (identical to main/auth) ────────────────────────────
+    // Ambient glow blobs
     for (int r = 280; r >= 0; r -= 14)
     {
         float t = 1.0f - (float)r / 280.0f;
@@ -574,9 +637,7 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
     for (int sy = 0; sy < screenH; sy += 4)
         DrawRectangle(0, sy, screenW, 1, { 0, 0, 0, 12 });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  NAVIGATION BAR  (drawn twice like mainScreen — keeps the look identical)
-    // ─────────────────────────────────────────────────────────────────────────
+    // Navigation bar
     DrawRectangle(0, 0, screenW, navH, { 10, 12, 28, 220 });
     DrawRectangle(0, navH - 1, screenW, 1, BORDER_NORMAL);
     DrawTextEx(font, "Gekoya", { 32, (float)(navH / 2) - 11 }, 22, 1.5f,
@@ -615,63 +676,63 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
           logoutBtn.y + logoutBtn.height / 2 - loSz.y / 2 },
         11, 1, hoverLogout ? WHITE : Color{ 200, 100, 100, 255 });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  LEFT COLUMN
-    // ─────────────────────────────────────────────────────────────────────────
 
-    // ── Avatar card ───────────────────────────────────────────────────────────
+    // Avatar card
     DrawRectangle((int)avatarCard.x + 4, (int)avatarCard.y + 6,
         (int)avatarCard.width, (int)avatarCard.height, { 0, 0, 0, 50 });
     DrawRectangleRounded(avatarCard, 0.08f, 8, BG_CARD);
     DrawRectangleRoundedLines(avatarCard, 0.08f, 8, BORDER_NORMAL);
-    // Accent top bar
     DrawRectangleRounded({ avatarCard.x, avatarCard.y, avatarCard.width, 5 }, 0.5f, 4,
         { 80, 130, 255, PA });
 
-    // Avatar circle with animated ring
     float avCX = avatarCard.x + 70;
     float avCY = avatarCard.y + avatarCardH / 2.0f;
     float avR = 44.0f;
 
-    // Pulsing outer ring
     float ringPulse = (sinf(prof_avatarPulse * 1.2f) + 1.0f) / 2.0f;
     unsigned char ringA = (unsigned char)((0.3f + ringPulse * 0.4f) * PA);
     DrawCircle((int)avCX, (int)avCY, (int)(avR + 8), { 80, 130, 255, ringA });
     DrawCircle((int)avCX, (int)avCY, (int)(avR + 5), { 20, 25, 48, PA });
-
-    // Avatar fill
     DrawCircle((int)avCX, (int)avCY, (int)avR, { 25, 30, 60, PA });
     DrawCircleLines((int)avCX, (int)avCY, avR, { 80, 130, 255, PA });
 
-    // Initials inside avatar
     std::string initials = "";
     if (!sessionUser.username.empty()) initials += (char)toupper(sessionUser.username[0]);
     if (sessionUser.username.size() > 1) initials += (char)toupper(sessionUser.username[1]);
     Vector2 initSz = MeasureTextEx(font, initials.c_str(), 22, 1);
     DrawTextEx(font, initials.c_str(),
-        { avCX - initSz.x / 2, avCY - initSz.y / 2 }, 22, 1,
-        { 80, 130, 255, PA });
+        { avCX - initSz.x / 2, avCY - initSz.y / 2 }, 22, 1, { 80, 130, 255, PA });
 
-    // Username + role badge
     int infoX = (int)avCX + (int)avR + 18;
-    int infoY = (int)avCY - 28;
+    int infoY = (int)avCY - 30;
     DrawTextEx(font, sessionUser.username.c_str(), { (float)infoX, (float)infoY }, 16, 1,
         { TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b, PA });
 
-    const char* roleTxt = "MEMBER";
+    const char* roleTxt = sessionUser.accessLevel > 1 ? "ADMIN" : "MEMBER";
+    Color roleCol = sessionUser.accessLevel > 1 ? Color{ 255, 180, 50, 255 } : Color{ 80, 130, 255, 255 };
     Vector2 roleSz = MeasureTextEx(font, roleTxt, 10, 1);
-    DrawRectangleRounded({ (float)infoX, (float)(infoY + 24), roleSz.x + 14, 18 },
-        0.4f, 4, { 80, 130, 255, (unsigned char)(50 * panelAlpha) });
-    DrawTextEx(font, roleTxt, { (float)(infoX + 7), (float)(infoY + 28) }, 10, 1,
-        { 80, 130, 255, PA });
+    DrawRectangleRounded({ (float)infoX, (float)(infoY + 22), roleSz.x + 14, 18 },
+        0.4f, 4, { roleCol.r, roleCol.g, roleCol.b, (unsigned char)(50 * panelAlpha) });
+    DrawTextEx(font, roleTxt, { (float)(infoX + 7), (float)(infoY + 26) }, 10, 1,
+        { roleCol.r, roleCol.g, roleCol.b, PA });
 
-    // Email (truncated)
     std::string emailDisplay = sessionUser.email.empty() ? "No email set" : sessionUser.email;
     if (emailDisplay.size() > 26) emailDisplay = emailDisplay.substr(0, 24) + "..";
-    DrawTextEx(font, emailDisplay.c_str(), { (float)infoX, (float)(infoY + 50) }, 11, 1,
+    DrawTextEx(font, emailDisplay.c_str(), { (float)infoX, (float)(infoY + 48) }, 11, 1,
         { TEXT_SECONDARY.r, TEXT_SECONDARY.g, TEXT_SECONDARY.b, PA });
 
-    // ── Stats card ────────────────────────────────────────────────────────────
+    // DB connection indicator
+    {
+        Color dbCol = prof_dataLoaded ? Color{ 80, 220, 120, 255 } : Color{ 200, 80, 80, 255 };
+        const char* dbTxt = prof_dataLoaded ? "DB CONNECTED" : "DB OFFLINE";
+        float dotPulse = (sinf(time * 3.0f) + 1.0f) / 2.0f;
+        unsigned char dotAlpha = (unsigned char)(180 + dotPulse * 75);
+        DrawCircle(infoX, (int)(infoY + 70), 4, { dbCol.r, dbCol.g, dbCol.b, dotAlpha });
+        DrawTextEx(font, dbTxt, { (float)(infoX + 10), (float)(infoY + 64) }, 10, 1,
+            { dbCol.r, dbCol.g, dbCol.b, (unsigned char)(180 * panelAlpha) });
+    }
+
+    // Stats card (live data)
     DrawRectangle((int)statsCard.x + 4, (int)statsCard.y + 6,
         (int)statsCard.width, (int)statsCard.height, { 0, 0, 0, 50 });
     DrawRectangleRounded(statsCard, 0.08f, 8, BG_CARD);
@@ -684,27 +745,37 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
     DrawRectangle((int)statsCard.x + 14, (int)statsCard.y + 28,
         (int)statsCard.width - 28, 1, BORDER_NORMAL);
 
-    // Two-column stats grid
-    int sCols = 2;
-    int sRows = 2;
+    // Live values
+    std::string sFilms = std::to_string(prof_totalBookings);
+    std::string sHours = [&]() {
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%.1fh", prof_totalHours);
+        return std::string(buf);
+        }();
+    std::string sGenre = prof_favGenre;
+    std::string sSince = prof_memberSince;
+
+    // 2×2 grid
+    int   sCols = 2, sRows = 2;
     float sCellW = (statsCard.width - 14) / sCols;
     float sCellH = (statsCardH - 38.0f) / sRows;
+
+    struct { const char* label; std::string value; Color accent; } liveStats[4] = {
+        { "FILMS BOOKED",    sFilms, {  80, 130, 255, 255 } },
+        { "HOURS WATCHED",   sHours, { 255, 140,  60, 255 } },
+        { "FAVOURITE GENRE", sGenre, { 180,  80, 255, 255 } },
+        { "MEMBER SINCE",    sSince, {  80, 220, 160, 255 } },
+    };
     for (int si = 0; si < 4; si++)
     {
-        int col = si % sCols;
-        int row = si / sCols;
+        int   col = si % sCols, row = si / sCols;
         float sx = statsCard.x + 14 + col * sCellW;
         float sy = statsCard.y + 36 + row * sCellH;
-
-        DrawTextEx(font, prof_stats[si].value,
-            { sx, sy + 4 }, 15, 1, { prof_stats[si].accent.r, prof_stats[si].accent.g,
-                                     prof_stats[si].accent.b, PA });
-        DrawTextEx(font, prof_stats[si].label,
-            { sx, sy + 24 }, 9, 1,
-            { TEXT_SECONDARY.r, TEXT_SECONDARY.g, TEXT_SECONDARY.b, (unsigned char)(160 * panelAlpha) });
+        Prof_DrawStat(font, liveStats[si].label, liveStats[si].value,
+            liveStats[si].accent, sx, sy, PA, panelAlpha);
     }
 
-    // ── Activity card ─────────────────────────────────────────────────────────
+    // Activity card (live bookings)
     DrawRectangle((int)actCard.x + 4, (int)actCard.y + 6,
         (int)actCard.width, (int)actCard.height, { 0, 0, 0, 50 });
     DrawRectangleRounded(actCard, 0.08f, 8, BG_CARD);
@@ -717,49 +788,60 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
     DrawRectangle((int)actCard.x + 14, (int)actCard.y + 28,
         (int)actCard.width - 28, 1, BORDER_NORMAL);
 
-    int maxItems = std::min((int)(sizeof(prof_activity) / sizeof(prof_activity[0])),
-        (int)((actCardH - 38) / 52));
+    // Accent colours cycling for booking rows
+    static const Color ROW_ACCENTS[] = {
+        {  80, 130, 255, 255 }, { 255, 140,  60, 255 },
+        {  60, 180, 255, 255 }, { 180,  80, 255, 255 },
+    };
+    static const int NUM_ACCENTS = 4;
 
-    for (int ai = 0; ai < maxItems; ai++)
+    if (prof_bookings.empty())
     {
-        float ay = actCard.y + 38 + ai * 52.0f;
+        DrawTextEx(font, "NO BOOKINGS YET",
+            { actCard.x + 14, actCard.y + 44 }, 11, 1,
+            { TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b, PA });
+    }
+    else
+    {
+        int maxItems = std::min((int)prof_bookings.size(),
+            (int)((actCardH - 38) / 52));
+        // Show most recent first
+        int startIdx = std::max(0, (int)prof_bookings.size() - maxItems);
 
-        // Row background on hover
-        Rectangle rowRect = { actCard.x + 10, ay, actCard.width - 20, 46 };
-        bool rowHov = CheckCollisionPointRec(mouse, rowRect);
-        if (rowHov)
-            DrawRectangleRounded(rowRect, 0.12f, 6, { 30, 35, 60, (unsigned char)(120 * panelAlpha) });
+        for (int ai = 0; ai < maxItems; ai++)
+        {
+            const Booking& bk = prof_bookings[prof_bookings.size() - 1 - ai];
+            Color accent = ROW_ACCENTS[ai % NUM_ACCENTS];
+            float ay = actCard.y + 38 + ai * 52.0f;
 
-        // Accent dot
-        DrawCircle((int)(actCard.x + 22), (int)(ay + 14),
-            5, { prof_activity[ai].accent.r, prof_activity[ai].accent.g,
-                 prof_activity[ai].accent.b, PA });
+            Rectangle rowRect = { actCard.x + 10, ay, actCard.width - 20, 46 };
+            bool rowHov = CheckCollisionPointRec(mouse, rowRect);
+            if (rowHov)
+                DrawRectangleRounded(rowRect, 0.12f, 6, { 30, 35, 60, (unsigned char)(120 * panelAlpha) });
 
-        // Title
-        std::string actTitle = prof_activity[ai].title;
-        if (actTitle.size() > 22) actTitle = actTitle.substr(0, 20) + "..";
-        DrawTextEx(font, actTitle.c_str(), { actCard.x + 34, ay + 6 }, 12, 1,
-            { TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b, PA });
+            DrawCircle((int)(actCard.x + 22), (int)(ay + 14), 5,
+                { accent.r, accent.g, accent.b, PA });
 
-        // Date + seat
-        DrawTextEx(font, prof_activity[ai].date, { actCard.x + 34, ay + 24 }, 10, 1,
-            { TEXT_SECONDARY.r, TEXT_SECONDARY.g, TEXT_SECONDARY.b, (unsigned char)(160 * panelAlpha) });
+            std::string actTitle = bk.movieTitle;
+            if (actTitle.size() > 22) actTitle = actTitle.substr(0, 20) + "..";
+            DrawTextEx(font, actTitle.c_str(), { actCard.x + 34, ay + 6 }, 12, 1,
+                { TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b, PA });
 
-        Vector2 seatSz = MeasureTextEx(font, prof_activity[ai].seat, 10, 1);
-        DrawTextEx(font, prof_activity[ai].seat,
-            { actCard.x + actCard.width - seatSz.x - 14, ay + 24 }, 10, 1,
-            { prof_activity[ai].accent.r, prof_activity[ai].accent.g,
-              prof_activity[ai].accent.b, (unsigned char)(180 * panelAlpha) });
+            DrawTextEx(font, bk.bookingDate.c_str(), { actCard.x + 34, ay + 24 }, 10, 1,
+                { TEXT_SECONDARY.r, TEXT_SECONDARY.g, TEXT_SECONDARY.b, (unsigned char)(160 * panelAlpha) });
 
-        // Divider (not last)
-        if (ai < maxItems - 1)
-            DrawRectangle((int)(actCard.x + 34), (int)(ay + 46),
-                (int)(actCard.width - 48), 1, BORDER_NORMAL);
+            std::string seatLine = bk.seatType + "  " + bk.showtime;
+            Vector2 seatSz = MeasureTextEx(font, seatLine.c_str(), 10, 1);
+            DrawTextEx(font, seatLine.c_str(),
+                { actCard.x + actCard.width - seatSz.x - 14, ay + 24 }, 10, 1,
+                { accent.r, accent.g, accent.b, (unsigned char)(180 * panelAlpha) });
+
+            if (ai < maxItems - 1)
+                DrawRectangle((int)(actCard.x + 34), (int)(ay + 46),
+                    (int)(actCard.width - 48), 1, BORDER_NORMAL);
+        }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  RIGHT COLUMN – PROFILE FORM CARD
-    // ─────────────────────────────────────────────────────────────────────────
     DrawRectangle((int)formCard.x + 5, (int)formCard.y + 8,
         (int)formCard.width, (int)formCard.height, { 0, 0, 0, 50 });
     DrawRectangleRounded(formCard, 0.04f, 10, BG_CARD);
@@ -767,12 +849,10 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
     DrawRectangleRounded({ formCard.x, formCard.y, formCard.width, 6 }, 0.04f, 4,
         { 80, 130, 255, PA });
 
-    // Card title row
     DrawTextEx(font, "ACCOUNT SETTINGS",
         { formCard.x + fPad, formCard.y + 18 }, 14, 1,
         { TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b, PA });
 
-    // Edit / View mode badge next to title
     {
         const char* modeTxt = prof_editMode ? "EDITING" : "VIEW ONLY";
         Color modeCol = prof_editMode ? Color{ 255, 180, 50, 255 } : Color{ 80, 200, 130, 255 };
@@ -787,7 +867,7 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
     DrawRectangle((int)formCard.x + fPad, (int)formCard.y + 40,
         (int)formCard.width - fPad * 2, 1, BORDER_NORMAL);
 
-    // ─ Error banner ──────────────────────────────────────────────────────────
+    // Error banner
     {
         unsigned char ea = (unsigned char)(prof_errorAlpha * panelAlpha * 255.0f);
         Rectangle errBox = { (float)fX, (float)(rowBase - 34), (float)fW, 28 };
@@ -797,21 +877,29 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
             { 200, 70, 70, ea });
     }
 
-    // ─ Username field ─────────────────────────────────────────────────────────
+    // Username field
     const std::string& dispUsername = prof_editMode ? prof_editUsername : sessionUser.username;
     Prof_DrawField(font, "USERNAME", dispUsername,
         prof_editMode && prof_usernameActive, false,
         usernameField, prof_editMode ? prof_usernameBorderLerp : 0.0f,
         prof_editMode ? prof_usernameGlowLerp : 0.0f, PA, time);
 
-    // Lock icon overlay when not in edit mode
     if (!prof_editMode)
     {
-        DrawTextEx(font, "LOCKED", { usernameField.x + usernameField.width - 60, usernameField.y + 16 },
+        DrawTextEx(font, "LOCKED",
+            { usernameField.x + usernameField.width - 60, usernameField.y + 16 },
             10, 1, { TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b, (unsigned char)(120 * panelAlpha) });
     }
 
-    // ─ Email field ────────────────────────────────────────────────────────────
+    // Note: username is immutable in DB — only email is editable
+    if (prof_editMode)
+    {
+        DrawTextEx(font, "(username cannot be changed)",
+            { usernameField.x + 14, usernameField.y + usernameField.height + 3 }, 9, 1,
+            { TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b, (unsigned char)(130 * panelAlpha) });
+    }
+
+    // Email field
     const std::string& dispEmail = prof_editMode ? prof_editEmail : sessionUser.email;
     Prof_DrawField(font, "EMAIL ADDRESS", dispEmail,
         prof_editMode && prof_emailActive, false,
@@ -820,11 +908,12 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
 
     if (!prof_editMode)
     {
-        DrawTextEx(font, "LOCKED", { emailField.x + emailField.width - 60, emailField.y + 16 },
+        DrawTextEx(font, "LOCKED",
+            { emailField.x + emailField.width - 60, emailField.y + 16 },
             10, 1, { TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b, (unsigned char)(120 * panelAlpha) });
     }
 
-    // ─ Save / Edit button ─────────────────────────────────────────────────────
+    // Save / Edit button
     bool hoverSave = CheckCollisionPointRec(mouse, saveBtn);
     Color saveBg = prof_editMode
         ? (hoverSave ? ACCENT_HOVER : ACCENT)
@@ -834,7 +923,6 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
         hoverSave ? Color{ ACCENT.r, ACCENT.g, ACCENT.b, PA }
     : Color{ BORDER_NORMAL.r, BORDER_NORMAL.g, BORDER_NORMAL.b, PA });
 
-    // Ripple on save
     if (prof_rippleActive)
     {
         float rp = prof_rippleTimer / PROF_RIPPLE_DURATION;
@@ -849,10 +937,10 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
           saveBtn.y + saveBtn.height / 2 - saveSz.y / 2 },
         13, 1, { TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b, PA });
 
-    // ─ Divider ────────────────────────────────────────────────────────────────
+    // Divider
     DrawRectangle(fX, dividerY, fW, 1, BORDER_NORMAL);
 
-    // ─ Password section toggle ────────────────────────────────────────────────
+    // Password section toggle
     bool hoverPwToggle = CheckCollisionPointRec(mouse, pwToggleBtn);
     DrawRectangleRounded(pwToggleBtn, 0.2f, 6,
         hoverPwToggle ? Color{ 30, 35, 60, (unsigned char)(200 * panelAlpha) }
@@ -865,42 +953,36 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
         { pwToggleBtn.x + 14, pwToggleBtn.y + 8 }, 11, 1,
         { TEXT_SECONDARY.r, TEXT_SECONDARY.g, TEXT_SECONDARY.b, PA });
 
-    // Chevron (animated rotate)
-    float chevAngle = prof_pwSection ? 1.0f : 0.0f;
-    const char* chev = chevAngle > 0.5f ? "v" : ">";
+    const char* chev = prof_pwSection ? "v" : ">";
     Vector2 chevSz = MeasureTextEx(font, chev, 11, 1);
     DrawTextEx(font, chev,
         { pwToggleBtn.x + pwToggleBtn.width - chevSz.x - 14, pwToggleBtn.y + 8 },
         11, 1, { TEXT_SECONDARY.r, TEXT_SECONDARY.g, TEXT_SECONDARY.b, PA });
 
-    // ─ Password fields (clipped to animated height) ───────────────────────────
+    // Password fields (animated expand)
     if (prof_pwSectionHeight > 1.0f)
     {
         BeginScissorMode(fX, (int)pwToggleBtn.y + 30,
             fW, (int)prof_pwSectionHeight);
 
-        // Current password
         Prof_DrawField(font, "CURRENT PASSWORD", prof_pwCurrent,
             prof_pwCurrActive, !prof_showCurr,
             pwCurrField, prof_pwCurrActive ? 1.0f : 0.0f,
             prof_pwCurrActive ? 1.0f : 0.0f, PA, time);
         Prof_DrawEye(prof_showCurr, eyeCurr, TEXT_SECONDARY, PA);
 
-        // New password
         Prof_DrawField(font, "NEW PASSWORD", prof_pwNew,
             prof_pwNewActive, !prof_showNew,
             pwNewField, prof_pwNewActive ? 1.0f : 0.0f,
             prof_pwNewActive ? 1.0f : 0.0f, PA, time);
         Prof_DrawEye(prof_showNew, eyeNew, TEXT_SECONDARY, PA);
 
-        // Confirm password
         Prof_DrawField(font, "CONFIRM NEW PASSWORD", prof_pwConfirm,
             prof_pwConfActive, !prof_showConf,
             pwConfField, prof_pwConfActive ? 1.0f : 0.0f,
             prof_pwConfActive ? 1.0f : 0.0f, PA, time);
         Prof_DrawEye(prof_showConf, eyeConf, TEXT_SECONDARY, PA);
 
-        // Update password button
         bool hoverPwUpd = CheckCollisionPointRec(mouse, pwUpdateBtn);
         DrawRectangleRounded(pwUpdateBtn, 0.3f, 8,
             hoverPwUpd ? Color{ 180, 80, 80, PA } : Color{ 100, 40, 40, PA });
@@ -915,16 +997,17 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
         EndScissorMode();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  STATUS BAR
-    // ─────────────────────────────────────────────────────────────────────────
     int barY = screenH - 34;
     DrawRectangle(0, barY, screenW, 34, { 10, 12, 28, 210 });
     DrawRectangle(0, barY, screenW, 1, BORDER_NORMAL);
 
     DrawTextEx(font, "ACCOUNT SETTINGS", { 32, (float)(barY + 10) }, 11, 1, TEXT_SECONDARY);
     DrawTextEx(font, "YOUR PROFILE", { 220,(float)(barY + 10) }, 11, 1, TEXT_SECONDARY);
-    DrawTextEx(font, "12 BOOKINGS", { 360,(float)(barY + 10) }, 11, 1, TEXT_SECONDARY);
+
+    // Live booking count in status bar
+    std::string bkCountTxt = std::to_string(prof_totalBookings) + " BOOKING"
+        + (prof_totalBookings != 1 ? "S" : "");
+    DrawTextEx(font, bkCountTxt.c_str(), { 360,(float)(barY + 10) }, 11, 1, TEXT_SECONDARY);
 
     float dotP = (sinf(time * 3.0f) + 1.0f) / 2.0f;
     unsigned char dotA = (unsigned char)(180 + dotP * 75);
@@ -932,9 +1015,6 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
     DrawTextEx(font, "LIVE", { (float)(screenW - 110), (float)(barY + 10) }, 11, 1,
         { 80, 220, 120, 255 });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  TOAST
-    // ─────────────────────────────────────────────────────────────────────────
     if (prof_toastTimer > 0.0f)
     {
         float fadeIn = std::min(1.0f, (PROF_TOAST_DURATION - prof_toastTimer) / 0.2f);
@@ -946,10 +1026,13 @@ AppState profileScreen(Font font, SessionUser& sessionUser)
         float tw = tSz.x + 32, th = 42;
         float tx = (float)(screenW / 2) - tw / 2, ty = (float)(barY - th - 12);
 
-        DrawRectangleRounded({ tx, ty, tw, th }, 0.3f, 8, { 20, 120, 60, ta });
-        DrawRectangleRoundedLines({ tx, ty, tw, th }, 0.3f, 8, { 60, 200, 100, ta });
-        DrawTextEx(font, prof_toastMsg.c_str(), { tx + 16, ty + 13 }, 12, 1,
-            { 200, 255, 220, ta });
+        Color toastBg = prof_toastIsError ? Color{ 120, 30, 30, ta } : Color{ 20, 120, 60, ta };
+        Color toastBdr = prof_toastIsError ? Color{ 200, 80, 80, ta } : Color{ 60, 200, 100, ta };
+        Color toastTxt = prof_toastIsError ? Color{ 255, 180, 180, ta } : Color{ 200, 255, 220, ta };
+
+        DrawRectangleRounded({ tx, ty, tw, th }, 0.3f, 8, toastBg);
+        DrawRectangleRoundedLines({ tx, ty, tw, th }, 0.3f, 8, toastBdr);
+        DrawTextEx(font, prof_toastMsg.c_str(), { tx + 16, ty + 13 }, 12, 1, toastTxt);
     }
 
     EndDrawing();

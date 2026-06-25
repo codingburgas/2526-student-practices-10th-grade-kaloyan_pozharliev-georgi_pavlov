@@ -9,7 +9,7 @@
 #include <map>
 #include <ctime>
 
-// ── Helper: returns today as "YYYY-MM-DD" ────────────────────────────────────
+// Helper: returns today as "YYYY-MM-DD"
 static std::string GetTodayString()
 {
     time_t now = time(nullptr);
@@ -66,7 +66,7 @@ static std::vector<Movie> allMovies = {
       "assets/interstellar.png" },
 };
 
-// ── Texture cache ────────────────────────────────────────────────────────────
+// Texture cache
 static std::map<std::string, Texture2D> posterCache;
 
 static Texture2D GetPoster(const char* path)
@@ -123,7 +123,6 @@ static void DrawPosterFitted(Texture2D tex, Rectangle dest, Color bgColor, Color
     Rectangle dst = { dx, dy, dw, dh };
     DrawTexturePro(tex, src, dst, { 0, 0 }, 0.0f, WHITE);
 }
-// ────────────────────────────────────────────────────────────────────────────
 
 static const int PARTICLE_COUNT = 55;
 struct MainParticle { float x, y, vx, vy, r, alpha; };
@@ -194,7 +193,7 @@ static float confirmPulseTimer = 0.0f;
 
 static float cardHoverY[16] = {};
 
-// ── Seat map state ──────────────────────────────────────────────────────────
+// Seat map state
 static const int SEAT_ROWS = 8;
 static const int SEAT_COLS = 12;
 static const int MAX_SELECTED = 10;
@@ -275,7 +274,6 @@ static Color SeatZoneColor(int col, bool selected, bool hovered, Color accent)
         return hovered ? Color{ 230,190,60,220 } : Color{ 180,140,40,160 };
     return hovered ? Color{ 170,175,200,220 } : Color{ 110,115,140,160 };
 }
-// ────────────────────────────────────────────────────────────────────────────
 
 static Color LerpColor(Color a, Color b, float t)
 {
@@ -336,7 +334,7 @@ static void DrawMovieCard(Font font, int idx, float cx, float cy,
     DrawRectangleRoundedLines({ cx, drawY, (float)cardW, (float)cardH }, 0.08f, 8, border);
     DrawRectangleRounded({ cx, drawY, (float)cardW, 5 }, 0.5f, 4, m.accent);
 
-    // ── Poster image (replaces the old placeholder block) ──
+    // Poster image (replaces the old placeholder block)
     Color posterBg = {
         (unsigned char)(m.accent.r / 5),
         (unsigned char)(m.accent.g / 5),
@@ -480,7 +478,7 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
     int leftX = panelX + 32;
     int topY = panelY + 28;
 
-    // ── Poster image (replaces the old placeholder block) ──
+    // Poster image (replaces the old placeholder block)
     Color posterBg = {
         (unsigned char)(m.accent.r / 5),
         (unsigned char)(m.accent.g / 5),
@@ -507,7 +505,7 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
     DrawTextEx(font, durBuf, { (float)leftX,(float)(topY + 344) }, 12, 1, TEXT_SECONDARY);
     DrawTextEx(font, m.releaseDate, { (float)leftX,(float)(topY + 364) }, 11, 1, TEXT_SECONDARY);
 
-    // ── Right panel ──
+    // Right panel
     int rightX = leftX + 240;
     int rightW = panelW - 280;
 
@@ -641,7 +639,7 @@ static void DrawDetailView(Font font, int idx, int screenW, int screenH,
         {
             rippleActive = true; rippleTimer = 0; rippleX = mouse.x; rippleY = mouse.y;
 
-            // ── Persist every selected seat as its own booking in MongoDB ──
+            // Persist every selected seat as its own booking in MongoDB
             std::string today = GetTodayString();
             std::string showtime = m.shows[selectedShow].time;
             int savedCount = 0;

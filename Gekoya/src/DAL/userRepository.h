@@ -16,4 +16,6 @@ public:
     static bool UserExists(const std::string& username);
     static bool ValidateUser(const std::string& username, const std::string& password);
     static int  GetUserAccessLevel(const std::string& username);
+    static std::string GetUserEmail(const std::string& username);
+    static bool UpdateUser(const std::string& username, const std::string& newEmail, const std::string& newPassword);
 };

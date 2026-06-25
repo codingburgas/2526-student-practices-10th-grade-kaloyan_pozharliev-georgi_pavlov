@@ -40,7 +40,6 @@ static float userBorderLerp = 0.0f;
 static float passBorderLerp = 0.0f;
 
 //  Entrance animation
-//  Panel slides up from +60px and fades in over ENTER_DURATION seconds.
 static float entranceTimer = 0.0f;
 static const float ENTER_DURATION = 0.55f;
 
@@ -178,13 +177,13 @@ AppState authScreen(Font font, SessionUser& sessionUser)
 
     if (!particlesInit) InitParticles(screenW, screenH);
 
-    // ── Entrance animation ──────────────────
+    // Entrance animation
     if (entranceTimer < ENTER_DURATION) entranceTimer += dt;
     float enterT = EaseOutCubic(entranceTimer / ENTER_DURATION);
     float panelAlpha = enterT;
     float panelSlideY = (1.0f - enterT) * 60.0f;
 
-    // ── Lockout countdown ───────────────────
+    // Lockout countdown
     if (isLockedOut)
     {
         lockoutTimer -= dt;
@@ -197,7 +196,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
         }
     }
 
-    // ── Shake ───────────────────────────────
+    // Shake
     if (shakeTimer > 0.0f)
     {
         shakeTimer -= dt;
@@ -209,14 +208,14 @@ AppState authScreen(Font font, SessionUser& sessionUser)
 
     if (isLoading) loadingTimer += dt;
 
-    // ── Ripple ──────────────────────────────
+    // Ripple
     if (rippleActive)
     {
         rippleTimer += dt;
         if (rippleTimer >= RIPPLE_DURATION) rippleActive = false;
     }
 
-    // ── Smooth lerps ────────────────────────
+    // Smooth lerps
     errorAlpha += ((showError ? 1.0f : 0.0f) - errorAlpha) * dt * 12.0f;
 
     float targetUser = usernameActive ? 1.0f : 0.0f;
@@ -230,10 +229,10 @@ AppState authScreen(Font font, SessionUser& sessionUser)
     if (!userHasError || usernameActive) userErrorLerp += (0.0f - userErrorLerp) * dt * 8.0f;
     if (!passHasError || passwordActive) passErrorLerp += (0.0f - passErrorLerp) * dt * 8.0f;
 
-    // ── Particles ───────────────────────────
+    // Particles
     UpdateParticles(dt, screenW, screenH);
 
-    // ── Layout ──────────────────────────────
+    // Layout
     const int ERROR_SLOT = 44;
 
     int panelW = 420;
@@ -275,7 +274,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
                              linkTextSize.x, linkTextSize.y };
     bool hoverSignUp = CheckCollisionPointRec(mouse, signUpLink);
 
-    // ── Cursor shape ────────────────────────
+    // Cursor shape
     bool overTextField = CheckCollisionPointRec(mouse, usernameField) ||
         CheckCollisionPointRec(mouse, passField);
     bool overClickable = CheckCollisionPointRec(mouse, signInBtn) ||
@@ -288,7 +287,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
     else if (overClickable) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
     else                    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 
-    // ── Mouse clicks ────────────────────────
+    // Mouse clicks
     if (clicked && !isLoading && !isLockedOut)
     {
         usernameActive = CheckCollisionPointRec(mouse, usernameField);
@@ -317,7 +316,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
     bool hoverForgot = CheckCollisionPointRec(mouse, forgotLink);
     bool hoverEye = CheckCollisionPointRec(mouse, eyeBtn);
 
-    // ── Ripple trigger ──────────────────────
+    // Ripple trigger
     if (clicked && CheckCollisionPointRec(mouse, signInBtn) && !isLoading && !isLockedOut)
     {
         rippleActive = true;
@@ -326,7 +325,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
         rippleY = mouse.y;
     }
 
-    // ── Login attempt ───────────────────────
+    // Login attempt
     bool tryLogin = (!isLoading && !wasLoading && !isLockedOut) &&
         ((clicked && CheckCollisionPointRec(mouse, signInBtn)) ||
             IsKeyPressed(KEY_ENTER));
@@ -346,7 +345,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
         }
     }
 
-    // ── DB call ─────────────────────────────
+    // DB call
     if (isLoading && loadingTimer > 0.05f)
     {
         bool success = AuthService::Login(username, password);
@@ -393,7 +392,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
     float pulse = (sinf(time * 0.8f) + 1.0f) / 2.0f;
     unsigned char PA = (unsigned char)(panelAlpha * 255.0f);
 
-    // ── Background particles ─────────────────
+    // Background particles
     for (int i = 0; i < PARTICLE_COUNT; i++)
     {
         unsigned char pa = (unsigned char)(particles[i].alpha * panelAlpha * 255.0f);
@@ -401,7 +400,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
             particles[i].r, Color{ 100, 140, 255, pa });
     }
 
-    // ── Ambient glow blobs ───────────────────
+    // Ambient glow blobs
     for (int r = 280; r >= 0; r -= 14)
     {
         float t = 1.0f - (float)r / 280.0f;
@@ -433,7 +432,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
         DrawCircle(screenW / 2, screenH / 2, (float)r, Color{ 55, 95, 210, a });
     }
 
-    // ── Panel shadow + card ──────────────────
+    // Panel shadow + card
     DrawRectangle(panelX + 6, panelY + 10, panelW, panelH,
         Color{ 0, 0, 0, (unsigned char)(60 * panelAlpha) });
     DrawRectangleRounded({ (float)panelX, (float)panelY, (float)panelW, (float)panelH },
@@ -443,12 +442,12 @@ AppState authScreen(Font font, SessionUser& sessionUser)
 
     float panelCX = panelX + panelW / 2.0f;
 
-    // ── Logo ─────────────────────────────────
+    // Logo
     Vector2 logoSize = MeasureTextEx(font, "Gekoya", 22, 1.5f);
     DrawTextEx(font, "Gekoya", { panelCX - logoSize.x / 2, (float)(panelY + 38) },
         22, 1.5f, Color{ TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b, PA });
 
-    // ── Heading ──────────────────────────────
+    // Heading
     Vector2 headingSize = MeasureTextEx(font, "Welcome back", 20, 1.2f);
     DrawTextEx(font, "Welcome back",
         { panelCX - headingSize.x / 2, (float)(panelY + 100) },
@@ -459,7 +458,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
         { panelCX - subheadingSize.x / 2, (float)(panelY + 130) },
         13, 0.5f, Color{ TEXT_SECONDARY.r, TEXT_SECONDARY.g, TEXT_SECONDARY.b, PA });
 
-    // ── Error box ────────────────────────────
+    // Error box
     {
         unsigned char ea = (unsigned char)(errorAlpha * panelAlpha * 255.0f);
         Rectangle errBox = { (float)fieldX, (float)errBoxY, (float)fieldW, 34 };
@@ -469,7 +468,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
             11, 1, Color{ 200, 70, 70, ea });
     }
 
-    // ── Username field ───────────────────────
+    // Username field
     {
         Color focusCol = LerpColor(BORDER_NORMAL, BORDER_FOCUS, userBorderLerp);
         Color errorCol = Color{ 200, 70, 70, 255 };
@@ -509,7 +508,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
         }
     }
 
-    // ── Password field ───────────────────────
+    // Password field
     {
         Color focusCol = LerpColor(BORDER_NORMAL, BORDER_FOCUS, passBorderLerp);
         Color errorCol = Color{ 200, 70, 70, 255 };
@@ -586,7 +585,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
         }
     }
 
-    // ── Remember me ──────────────────────────
+    // Remember me
     DrawRectangleRounded(rememberBox, 0.2f, 4,
         Color{ BG_INPUT.r, BG_INPUT.g, BG_INPUT.b, PA });
     DrawRectangleRoundedLines(rememberBox, 0.2f, 4,
@@ -597,13 +596,13 @@ AppState authScreen(Font font, SessionUser& sessionUser)
     DrawTextEx(font, "REMEMBER ME", { rememberBox.x + 26, rememberBox.y + 2 }, 11, 1,
         Color{ TEXT_SECONDARY.r, TEXT_SECONDARY.g, TEXT_SECONDARY.b, PA });
 
-    // ── Forgot password ───────────────────────
+    // Forgot password
     DrawTextEx(font, "FORGOT PASSWORD?", { forgotLink.x, forgotLink.y }, 11, 1,
         hoverForgot
         ? Color{ TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b, PA }
     : Color{ ACCENT.r, ACCENT.g, ACCENT.b, PA });
 
-    // ── Sign in button ───────────────────────
+    // Sign in button
     if (!isLockedOut)
     {
         float btnScale = (hoverSignIn && !isLoading) ? 0.97f : 1.0f;
@@ -658,7 +657,7 @@ AppState authScreen(Font font, SessionUser& sessionUser)
             13, 1, Color{ 200, 70, 70, PA });
     }
 
-    // ── Sign up link ─────────────────────────
+    // Sign up link
     DrawTextEx(font, signUpPreText, { signUpStartX, (float)signUpLinkY }, 13, 0.5f,
         Color{ TEXT_SECONDARY.r, TEXT_SECONDARY.g, TEXT_SECONDARY.b, PA });
     DrawTextEx(font, signUpLinkText,

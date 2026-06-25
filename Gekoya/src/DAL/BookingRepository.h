@@ -10,13 +10,13 @@ struct Booking
     std::string showtime;
     std::string seatType;
     std::string bookingDate;
-    int         price;
+    int price;
 };
 
 class BookingRepository
 {
 public:
-    static bool                 InsertBooking(const Booking& booking);
+    static bool InsertBooking(const Booking& booking);
     static std::vector<Booking> GetBookingsByUser(const std::string& username);
-    static bool                 DeleteBooking(const std::string& id);
+    static bool DeleteBooking(const std::string& id);
 };

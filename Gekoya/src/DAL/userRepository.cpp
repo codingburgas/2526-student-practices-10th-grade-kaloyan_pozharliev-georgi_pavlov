@@ -93,3 +93,69 @@ int UserRepository::GetUserAccessLevel(const std::string& username)
         return 1;
     }
 }
+
+std::string UserRepository::GetUserEmail(const std::string& username)
+{
+    try
+    {
+        auto& db = Database::Get().GetDB();
+        auto  collection = db["users"];
+
+        bsoncxx::builder::basic::document filter{};
+        filter.append(bsoncxx::builder::basic::kvp("username", username));
+
+        auto result = collection.find_one(filter.view());
+        if (result)
+        {
+            auto view = result->view();
+            if (view.find("email") != view.end())
+                return std::string(view["email"].get_string().value);
+        }
+        return "";
+    }
+    catch (const std::exception& e)
+    {
+        printf("GetUserEmail error: %s\n", e.what());
+        return "";
+    }
+}
+
+bool UserRepository::UpdateUser(const std::string& username, const std::string& newEmail, const std::string& newPassword)
+{
+    try
+    {
+        auto& db = Database::Get().GetDB();
+        auto  collection = db["users"];
+
+        bsoncxx::builder::basic::document filter{};
+        filter.append(bsoncxx::builder::basic::kvp("username", username));
+
+        bsoncxx::builder::basic::document setDoc{};
+        bool hasUpdate = false;
+
+        if (!newEmail.empty())
+        {
+            setDoc.append(bsoncxx::builder::basic::kvp("email", newEmail));
+            hasUpdate = true;
+        }
+        if (!newPassword.empty())
+        {
+            setDoc.append(bsoncxx::builder::basic::kvp("password", newPassword));
+            hasUpdate = true;
+        }
+
+        if (!hasUpdate)
+            return true; // nothing to update, treat as success
+
+        bsoncxx::builder::basic::document update{};
+        update.append(bsoncxx::builder::basic::kvp("$set", setDoc));
+
+        auto result = collection.update_one(filter.view(), update.view());
+        return result && result->matched_count() > 0;
+    }
+    catch (const std::exception& e)
+    {
+        printf("UpdateUser error: %s\n", e.what());
+        return false;
+    }
+}

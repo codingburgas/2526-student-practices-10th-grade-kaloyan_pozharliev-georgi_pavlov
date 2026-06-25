@@ -5,17 +5,17 @@
 #include <vector>
 #include <algorithm>
 
-// ─── Nav ─────────────────────────────────────────────────────────────────────
+// Nav
 static const char* cin_navItems[] = { "MOVIES", "CINEMAS", "MY TICKETS", "PROFILE" };
 static int         cin_activeNav = 1;
 static AppState    cin_pendingNav = CINEMAS;
 
-// ─── Entrance ────────────────────────────────────────────────────────────────
+// Entrance
 static float       cin_entranceTimer = 0.0f;
 static const float CIN_ENTER_DURATION = 0.55f;
 static float Cin_EaseOutCubic(float t) { float inv = 1.0f - t; return 1.0f - inv * inv * inv; }
 
-// ─── Particles ───────────────────────────────────────────────────────────────
+// Particles
 static const int CIN_PARTICLE_COUNT = 55;
 struct CinParticle { float x, y, vx, vy, r, alpha; };
 static CinParticle cin_particles[CIN_PARTICLE_COUNT];
@@ -47,13 +47,13 @@ static void Cin_UpdateParticles(float dt, int w, int h)
     }
 }
 
-// ─── Toast ───────────────────────────────────────────────────────────────────
+// Toast
 static std::string cin_toastMsg = "";
 static float       cin_toastTimer = 0.0f;
 static const float CIN_TOAST_DURATION = 2.8f;
 static void Cin_ShowToast(const std::string& msg) { cin_toastMsg = msg; cin_toastTimer = CIN_TOAST_DURATION; }
 
-// ─── Color lerp ──────────────────────────────────────────────────────────────
+// Color lerp
 static Color Cin_LerpColor(Color a, Color b, float t)
 {
     if (t < 0) t = 0; if (t > 1) t = 1;
@@ -64,7 +64,7 @@ static Color Cin_LerpColor(Color a, Color b, float t)
         (unsigned char)(a.a + (b.a - a.a) * t) };
 }
 
-// ─── Data ────────────────────────────────────────────────────────────────────
+// Data
 struct CinScreen
 {
     const char* name;
@@ -142,7 +142,7 @@ static std::vector<Cinema> cin_cinemas = {
     },
 };
 
-// ─── UI state ────────────────────────────────────────────────────────────────
+// UI state
 static int   cin_selectedCinema = -1;   // -1 = list view
 static int   cin_hoveredCinema = -1;
 static float cin_detailSlide = 0.0f; // 0 = fully on screen, screenW = off
@@ -156,7 +156,7 @@ static bool        cin_searchActive = false;
 static float cin_detailScrollY = 0.0f;
 static float cin_detailScrollTarget = 0.0f;
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// Helpers
 static Color Cin_ScreenTypeColor(const char* type)
 {
     std::string t = type;
@@ -187,7 +187,7 @@ static std::vector<int> Cin_FilteredIndices()
     return result;
 }
 
-// ─── Draw one cinema card ─────────────────────────────────────────────────────
+// Draw one cinema card
 static void Cin_DrawCard(Font font, int idx, float cx, float cy,
     int cardW, int cardH, bool hovered, bool selected,
     Vector2 mouse, bool clicked, float dt, float panelAlpha)
@@ -289,7 +289,7 @@ static void Cin_DrawCard(Font font, int idx, float cx, float cy,
         10, 1, WHITE);
 }
 
-// ─── Draw detail view ─────────────────────────────────────────────────────────
+// Draw detail view
 static void Cin_DrawDetail(Font font, int idx, int screenW, int screenH,
     float slideOffset, float time, Vector2 mouse, bool clicked,
     float dt, float panelAlpha)
@@ -315,7 +315,7 @@ static void Cin_DrawDetail(Font font, int idx, int screenW, int screenH,
     int leftX = panelX + 32;
     int topY = panelY + 28;
 
-    // ── Left: large reel illustration ────────────────────────────────────────
+    // Left: large reel illustration
     Color iconBg = { (unsigned char)(c.accent.r / 5),
                      (unsigned char)(c.accent.g / 5),
                      (unsigned char)(c.accent.b / 5), 255 };
@@ -382,7 +382,7 @@ static void Cin_DrawDetail(Font font, int idx, int screenW, int screenH,
             TEXT_SECONDARY);
     }
 
-    // ── Right: name, address, screens table ──────────────────────────────────
+    // Right: name, address, screens table
     int rightX = leftX + 240;
     int rightW = panelW - 280;
 
@@ -456,7 +456,7 @@ static void Cin_DrawDetail(Font font, int idx, int screenW, int screenH,
 
     EndScissorMode();
 
-    // ── Get Directions button ─────────────────────────────────────────────────
+    // Get Directions button
     Rectangle dirBtn = { (float)rightX, (float)(panelY + panelH - 58), (float)(rightW - 40), 44 };
     bool hoverDir = CheckCollisionPointRec(mouse, dirBtn);
     Color dirBg = hoverDir
@@ -472,7 +472,7 @@ static void Cin_DrawDetail(Font font, int idx, int screenW, int screenH,
     if (clicked && hoverDir)
         Cin_ShowToast(std::string("DIRECTIONS TO ") + c.name + " COPIED");
 
-    // ── Back button ───────────────────────────────────────────────────────────
+    // Back button
     Rectangle backBtn = { (float)(panelX + 12), (float)(panelY + 12), 110, 34 };
     bool hoverBack = CheckCollisionPointRec(mouse, backBtn);
     DrawRectangleRounded(backBtn, 0.3f, 6,
@@ -493,7 +493,6 @@ static void Cin_DrawDetail(Font font, int idx, int screenW, int screenH,
     }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 AppState cinemasScreen(Font font, SessionUser& sessionUser)
 {
     float dt = GetFrameTime();
@@ -520,7 +519,7 @@ AppState cinemasScreen(Font font, SessionUser& sessionUser)
     Vector2 mouse = GetMousePosition();
     bool    clicked = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 
-    // ── Nav ───────────────────────────────────────────────────────────────────
+    // Nav
     int navH = 64;
     cin_pendingNav = CINEMAS;
     for (int i = 0; i < 4; i++)
@@ -536,7 +535,7 @@ AppState cinemasScreen(Font font, SessionUser& sessionUser)
         }
     }
 
-    // ── Search input ──────────────────────────────────────────────────────────
+    // Search input
     Rectangle searchBox = { (float)(screenW - 560), (float)(navH / 2 - 16), 220, 32 };
     if (clicked) cin_searchActive = CheckCollisionPointRec(mouse, searchBox);
     if (cin_searchActive && cin_selectedCinema < 0)
@@ -551,7 +550,7 @@ AppState cinemasScreen(Font font, SessionUser& sessionUser)
         }
     }
 
-    // ── Card hover detection ──────────────────────────────────────────────────
+    // Card hover detection
     int   navH2 = navH;
     int   filterBarH = 36;
     int   listY = navH2 + filterBarH + 14 + 12;
@@ -584,7 +583,7 @@ AppState cinemasScreen(Font font, SessionUser& sessionUser)
         }
     }
 
-    // ── Logout ────────────────────────────────────────────────────────────────
+    // Logout
     Rectangle logoutBtn = { (float)(screenW - 105), (float)(navH / 2 - 14), 88, 28 };
     bool      hoverLogout = CheckCollisionPointRec(mouse, logoutBtn);
     if (clicked && hoverLogout)
@@ -600,9 +599,6 @@ AppState cinemasScreen(Font font, SessionUser& sessionUser)
         return AUTH;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  DRAWING
-    // ─────────────────────────────────────────────────────────────────────────
     BeginDrawing();
     ClearBackground(BG_DARK);
 
@@ -650,7 +646,7 @@ AppState cinemasScreen(Font font, SessionUser& sessionUser)
     for (int sy = 0; sy < screenH; sy += 4)
         DrawRectangle(0, sy, screenW, 1, { 0, 0, 0, 12 });
 
-    // ── Nav bar ───────────────────────────────────────────────────────────────
+    // Nav bar
     DrawRectangle(0, 0, screenW, navH, { 10, 12, 28, 220 });
     DrawRectangle(0, navH - 1, screenW, 1, BORDER_NORMAL);
     DrawTextEx(font, "Gekoya", { 32, (float)(navH / 2) - 11 }, 22, 1.5f,
@@ -702,7 +698,7 @@ AppState cinemasScreen(Font font, SessionUser& sessionUser)
           logoutBtn.y + logoutBtn.height / 2 - loSz.y / 2 },
         11, 1, hoverLogout ? WHITE : Color{ 200, 100, 100, 255 });
 
-    // ── Filter / count bar ────────────────────────────────────────────────────
+    // Filter / count bar
     int filterBarY = navH + 12;
     char countBuf[32];
     snprintf(countBuf, 32, "%d CINEMAS", (int)filtered.size());
@@ -714,7 +710,7 @@ AppState cinemasScreen(Font font, SessionUser& sessionUser)
     DrawTextEx(font, "CINEMAS NEAR YOU",
         { 36, (float)(filterBarY + 8) }, 11, 1, TEXT_SECONDARY);
 
-    // ── Card list ─────────────────────────────────────────────────────────────
+    // Card list
     if (cin_selectedCinema < 0 || cin_detailSlide > screenW * 0.05f)
     {
         BeginScissorMode(0, listY - 4, screenW, screenH - listY - 34);
@@ -743,14 +739,14 @@ AppState cinemasScreen(Font font, SessionUser& sessionUser)
         EndScissorMode();
     }
 
-    // ── Detail view ───────────────────────────────────────────────────────────
+    // Detail view
     if (cin_selectedCinema >= 0 || cin_detailSlide < screenW * 0.95f)
     {
         Cin_DrawDetail(font, cin_selectedCinema >= 0 ? cin_selectedCinema : 0,
             screenW, screenH, cin_detailSlide, time, mouse, clicked, dt, panelAlpha);
     }
 
-    // ── Status bar ────────────────────────────────────────────────────────────
+    // Status bar
     int barY = screenH - 34;
     DrawRectangle(0, barY, screenW, 34, { 10, 12, 28, 210 });
     DrawRectangle(0, barY, screenW, 1, BORDER_NORMAL);
@@ -768,7 +764,7 @@ AppState cinemasScreen(Font font, SessionUser& sessionUser)
     DrawTextEx(font, "LIVE", { (float)(screenW - 110), (float)(barY + 10) }, 11, 1,
         { 80, 220, 120, 255 });
 
-    // ── Toast ─────────────────────────────────────────────────────────────────
+    // Toast
     if (cin_toastTimer > 0.0f)
     {
         float fadeIn = std::min(1.0f, (CIN_TOAST_DURATION - cin_toastTimer) / 0.2f);

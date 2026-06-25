@@ -6,17 +6,17 @@
 #include <cmath>
 #include <algorithm>
 
-// ─── Nav ─────────────────────────────────────────────────────────────────────
+// Nav
 static const char* tkt_navItems[] = { "MOVIES", "CINEMAS", "MY TICKETS", "PROFILE" };
 static int         tkt_activeNav = 2;
 static AppState    tkt_pendingNav = TICKETS;
 
-// ─── Entrance ────────────────────────────────────────────────────────────────
+// Entrance
 static float       tkt_entranceTimer = 0.0f;
 static const float TKT_ENTER_DURATION = 0.55f;
 static float Tkt_EaseOutCubic(float t) { float inv = 1.0f - t; return 1.0f - inv * inv * inv; }
 
-// ─── Particles ───────────────────────────────────────────────────────────────
+// Particles
 static const int TKT_PARTICLE_COUNT = 55;
 struct TktParticle { float x, y, vx, vy, r, alpha; };
 static TktParticle tkt_particles[TKT_PARTICLE_COUNT];
@@ -48,20 +48,20 @@ static void Tkt_UpdateParticles(float dt, int w, int h)
     }
 }
 
-// ─── Toast ───────────────────────────────────────────────────────────────────
+// Toast
 static std::string tkt_toastMsg = "";
 static float       tkt_toastTimer = 0.0f;
 static const float TKT_TOAST_DURATION = 2.8f;
 static void Tkt_ShowToast(const std::string& msg) { tkt_toastMsg = msg; tkt_toastTimer = TKT_TOAST_DURATION; }
 
-// ─── Ripple ───────────────────────────────────────────────────────────────────
+// Ripple
 static bool  tkt_rippleActive = false;
 static float tkt_rippleTimer = 0.0f;
 static float tkt_rippleX = 0, tkt_rippleY = 0;
 static const float TKT_RIPPLE_DURATION = 0.5f;
 static const float TKT_RIPPLE_MAX_R = 120.0f;
 
-// ─── Color lerp ──────────────────────────────────────────────────────────────
+// Color lerp
 static Color Tkt_LerpColor(Color a, Color b, float t)
 {
     if (t < 0) t = 0; if (t > 1) t = 1;
@@ -72,12 +72,12 @@ static Color Tkt_LerpColor(Color a, Color b, float t)
         (unsigned char)(a.a + (b.a - a.a) * t) };
 }
 
-// ─── Booking data state ───────────────────────────────────────────────────────
+// Booking data state
 static std::vector<Booking> tkt_bookings;
 static bool                 tkt_loaded = false;
 static std::string          tkt_loadedFor = "";  // username we loaded for
 
-// ─── UI state ────────────────────────────────────────────────────────────────
+// UI state
 static int   tkt_selectedTicket = -1;   // index into tkt_bookings
 static float tkt_scrollY = 0.0f;
 static float tkt_scrollTarget = 0.0f;
@@ -90,7 +90,7 @@ static float tkt_confirmAlpha = 0.0f;
 // Hover tracking per row (up to 64 tickets)
 static float tkt_rowHoverLerp[64] = {};
 
-// ─── Seat type colour ─────────────────────────────────────────────────────────
+// Seat type colour
 static Color Tkt_SeatColor(const std::string& seatType)
 {
     if (seatType == "PLATINUM") return { 180,  80, 255, 255 };
@@ -98,7 +98,7 @@ static Color Tkt_SeatColor(const std::string& seatType)
     return                             { 160, 160, 180, 255 }; // SILVER
 }
 
-// ─── Seat type price (matches mainScreen) ────────────────────────────────────
+// Seat type price (matches mainScreen)
 static int Tkt_SeatPrice(const std::string& seatType)
 {
     if (seatType == "PLATINUM") return 22;
@@ -106,7 +106,7 @@ static int Tkt_SeatPrice(const std::string& seatType)
     return 8; // SILVER
 }
 
-// ─── Draw a single ticket row ─────────────────────────────────────────────────
+// Draw a single ticket row
 static void Tkt_DrawTicketRow(Font font, int idx, const Booking& b,
     float rx, float ry, float rw, float rh,
     bool hovered, bool selected, float hoverLerp,
@@ -142,7 +142,7 @@ static void Tkt_DrawTicketRow(Font font, int idx, const Booking& b,
         DrawRectangle((int)perfX, (int)dy, 1, 4,
             { BORDER_NORMAL.r, BORDER_NORMAL.g, BORDER_NORMAL.b, (unsigned char)(80 * PA / 255) });
 
-    // ── Left section: movie title + date ─────────────────────────────────────
+    // Left section: movie title + date
     int lx = (int)rx + 20;
     int ly = (int)(ry + lift) + 14;
 
@@ -162,7 +162,7 @@ static void Tkt_DrawTicketRow(Font font, int idx, const Booking& b,
     DrawTextEx(font, b.bookingDate.c_str(), { (float)lx, (float)(ly + 38) }, 10, 1,
         { TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b, PA });
 
-    // ── Middle section: seat type badge ──────────────────────────────────────
+    // Middle section: seat type badge
     float midX = rx + rw * 0.5f - 50;
     float midY = ry + lift + rh / 2.0f - 18;
 
@@ -181,7 +181,7 @@ static void Tkt_DrawTicketRow(Font font, int idx, const Booking& b,
         { midX + (stSz.x + 18) / 2 - prSz.x / 2, midY + 28 }, 13, 1,
         { seatCol.r, seatCol.g, seatCol.b, PA });
 
-    // ── Right stub: barcode + cancel button ───────────────────────────────────
+    // Right stub: barcode + cancel button
     float stubX = perfX + 10;
     float stubW = rw - (stubX - rx) - 10;
     float stubCX = stubX + stubW / 2;
@@ -221,7 +221,7 @@ static void Tkt_DrawTicketRow(Font font, int idx, const Booking& b,
         9, 1, { TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b, PA });
 }
 
-// ─── Draw confirm cancel overlay ─────────────────────────────────────────────
+// Draw confirm cancel overlay
 static bool Tkt_DrawConfirmDialog(Font font, int screenW, int screenH,
     float alpha, Vector2 mouse, bool clicked)
 {
@@ -285,7 +285,6 @@ static bool Tkt_DrawConfirmDialog(Font font, int screenW, int screenH,
     return false;
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 AppState ticketsScreen(Font font, SessionUser& sessionUser)
 {
     float dt = GetFrameTime();
@@ -314,7 +313,7 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
     float confirmTarget = tkt_confirmCancel ? 1.0f : 0.0f;
     tkt_confirmAlpha += (confirmTarget - tkt_confirmAlpha) * dt * 14.0f;
 
-    // ── Load bookings from DB when user changes or first load ─────────────────
+    // Load bookings from DB when user changes or first load
     if (!tkt_loaded || tkt_loadedFor != sessionUser.username)
     {
         tkt_bookings = BookingService::GetUserBookings(sessionUser.username);
@@ -325,7 +324,7 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
     Vector2 mouse = GetMousePosition();
     bool    clicked = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 
-    // ── Nav ───────────────────────────────────────────────────────────────────
+    // Nav
     int navH = 64;
     tkt_pendingNav = TICKETS;
     for (int i = 0; i < 4; i++)
@@ -341,7 +340,7 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
         }
     }
 
-    // ── Layout ────────────────────────────────────────────────────────────────
+    // Layout
     int   listStartY = navH + 56;         // below nav + header row
     int   listEndY = screenH - 34 - 8; // above status bar
     int   listH = listEndY - listStartY;
@@ -365,7 +364,7 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
     }
     tkt_scrollY += (tkt_scrollTarget - tkt_scrollY) * dt * 12.0f;
 
-    // ── Logout ────────────────────────────────────────────────────────────────
+    // Logout
     Rectangle logoutBtn = { (float)(screenW - 105), (float)(navH / 2 - 14), 88, 28 };
     bool      hoverLogout = CheckCollisionPointRec(mouse, logoutBtn);
     if (clicked && hoverLogout && !tkt_confirmCancel)
@@ -384,7 +383,7 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
         return AUTH;
     }
 
-    // ── Refresh button ────────────────────────────────────────────────────────
+    // Refresh button
     int   headerY = navH + 14;
     Rectangle refreshBtn = { (float)(screenW - 160), (float)headerY, 120, 30 };
     bool hoverRefresh = CheckCollisionPointRec(mouse, refreshBtn);
@@ -395,7 +394,7 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
         Tkt_ShowToast("TICKETS REFRESHED");
     }
 
-    // ── Per-row hover lerp + cancel click detection ───────────────────────────
+    // Per-row hover lerp + cancel click detection
     for (int i = 0; i < (int)tkt_bookings.size() && i < 64; i++)
     {
         float ry = (float)(listStartY + i * rowStride) - tkt_scrollY;
@@ -426,7 +425,7 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
         }
     }
 
-    // ── Confirm cancel dialog result ──────────────────────────────────────────
+    // Confirm cancel dialog result
     if (tkt_confirmAlpha > 0.05f)
     {
         bool confirmed = Tkt_DrawConfirmDialog(font, screenW, screenH,
@@ -438,9 +437,6 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  DRAWING
-    // ─────────────────────────────────────────────────────────────────────────
     BeginDrawing();
     ClearBackground(BG_DARK);
 
@@ -488,7 +484,7 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
     for (int sy = 0; sy < screenH; sy += 4)
         DrawRectangle(0, sy, screenW, 1, { 0, 0, 0, 12 });
 
-    // ── Nav bar ───────────────────────────────────────────────────────────────
+    // Nav bar 
     DrawRectangle(0, 0, screenW, navH, { 10, 12, 28, 220 });
     DrawRectangle(0, navH - 1, screenW, 1, BORDER_NORMAL);
     DrawTextEx(font, "Gekoya", { 32, (float)(navH / 2) - 11 }, 22, 1.5f,
@@ -527,7 +523,7 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
           logoutBtn.y + logoutBtn.height / 2 - loSz.y / 2 },
         11, 1, hoverLogout ? WHITE : Color{ 200, 100, 100, 255 });
 
-    // ── Page header row ───────────────────────────────────────────────────────
+    // Page header row
     DrawTextEx(font, "MY TICKETS",
         { 36, (float)headerY + 6 }, 16, 1,
         { TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b, PA });
@@ -558,7 +554,7 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
 
     DrawRectangle(0, listStartY - 4, screenW, 1, BORDER_NORMAL);
 
-    // ── Ticket list ───────────────────────────────────────────────────────────
+    // Ticket list
     BeginScissorMode(0, listStartY, screenW, listH);
 
     if (tkt_bookings.empty())
@@ -632,7 +628,7 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
 
     EndScissorMode();
 
-    // ── Status bar ────────────────────────────────────────────────────────────
+    // Status bar
     int barY = screenH - 34;
     DrawRectangle(0, barY, screenW, 34, { 10, 12, 28, 210 });
     DrawRectangle(0, barY, screenW, 1, BORDER_NORMAL);
@@ -652,7 +648,7 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
     DrawTextEx(font, "LIVE", { (float)(screenW - 110), (float)(barY + 10) }, 11, 1,
         { 80, 220, 120, 255 });
 
-    // ── Confirm cancel dialog (drawn on top of everything) ────────────────────
+    // Confirm cancel dialog (drawn on top of everything)
     if (tkt_confirmAlpha > 0.01f)
     {
         bool confirmed = Tkt_DrawConfirmDialog(font, screenW, screenH,
@@ -677,7 +673,7 @@ AppState ticketsScreen(Font font, SessionUser& sessionUser)
         }
     }
 
-    // ── Toast ─────────────────────────────────────────────────────────────────
+    // Toast
     if (tkt_toastTimer > 0.0f)
     {
         float fadeIn = std::min(1.0f, (TKT_TOAST_DURATION - tkt_toastTimer) / 0.2f);
